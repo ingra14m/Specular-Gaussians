@@ -4,6 +4,12 @@ It should be noted that this is **not an implementation of a paper**. The key mo
 
 ![teaser](assets/teaser.png)
 
+## Update
+
+- I removed the normal. The normal would improve metrics, but its quality is so poor that it can't truly be called a normal. I have placed the model that includes the normal in the [normal](https://github.com/ingra14m/Specular-Gaussians/tree/normal) branch. After removing the normal, both training speed and rendering FPS will improve a lot.
+
+
+
 ## Run
 
 ### Environment
@@ -37,6 +43,15 @@ python train.py -s path/to/your/nerf/dataset -m output/exp-name --eval
 ```shell
 python render.py -m output/exp-name
 python metrics.py -m output/exp-name
+```
+
+- To achieve higher metrics, you need to incorporate the following residual loss. However, this will reduce the quality of anisotropic specular rendering.
+
+```python
+if iteration > 3000:
+  residual_color = render(viewpoint_cam, gaussians, pipe, background, mlp_color, hybrid=False)["render"]
+  reflect_loss = l1_loss(gt_image - image, residual_color)
+  loss = loss + reflect_loss
 ```
 
 
