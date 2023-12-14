@@ -3,7 +3,7 @@
 # GRAPHDECO research group, https://team.inria.fr/graphdeco
 # All rights reserved.
 #
-# This software is free for non-commercial, research and evaluation use 
+# This software is free for non-commercial, research and evaluation use
 # under the terms of the LICENSE.md file.
 #
 # For inquiries contact  george.drettakis@inria.fr
@@ -40,8 +40,7 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
         dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-        normal, normal_delta = gaussians.get_normal(dir_pp_normalized=dir_pp_normalized, return_delta=True)
-        mlp_color = specular.step(gaussians.get_asg_features, dir_pp_normalized, normal)
+        mlp_color = specular.step(gaussians.get_asg_features, dir_pp_normalized)
         results = render(view, gaussians, pipeline, background, mlp_color)
         rendering = results["render"]
         depth = results["depth"]

@@ -3,7 +3,7 @@
 # GRAPHDECO research group, https://team.inria.fr/graphdeco
 # All rights reserved.
 #
-# This software is free for non-commercial, research and evaluation use 
+# This software is free for non-commercial, research and evaluation use
 # under the terms of the LICENSE.md file.
 #
 # For inquiries contact  george.drettakis@inria.fr
@@ -84,13 +84,10 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
             viewpoint_cam.load2device()
 
         N = gaussians.get_xyz.shape[0]
-        normal_loss = 0
         if iteration > 3000:
             dir_pp = (gaussians.get_xyz - viewpoint_cam.camera_center.repeat(gaussians.get_features.shape[0], 1))
             dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-            normal, normal_delta = gaussians.get_normal(dir_pp_normalized=dir_pp_normalized, return_delta=True)
-            mlp_color = specular_mlp.step(gaussians.get_asg_features, dir_pp_normalized, normal)
-            normal_loss = l2_loss(normal_delta, torch.zeros_like(normal_delta))
+            mlp_color = specular_mlp.step(gaussians.get_asg_features, dir_pp_normalized)
         else:
             mlp_color = 0
 
@@ -105,7 +102,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
         # Loss
         gt_image = viewpoint_cam.original_image.cuda()
         Ll1 = l1_loss(image, gt_image)
-        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image)) + normal_loss
+        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
         # if iteration > 3000:
         #     residual_color = render(viewpoint_cam, gaussians, pipe, background, mlp_color, hybrid=False)["render"]
         #     reflect_loss = l1_loss(gt_image - image, residual_color)
@@ -218,9 +215,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                     dir_pp = (scene.gaussians.get_xyz - viewpoint.camera_center.repeat(
                         scene.gaussians.get_features.shape[0], 1))
                     dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-                    normal, normal_delta = scene.gaussians.get_normal(dir_pp_normalized=dir_pp_normalized,
-                                                                      return_delta=True)
-                    mlp_color = specular_mlp.step(scene.gaussians.get_asg_features, dir_pp_normalized, normal)
+                    mlp_color = specular_mlp.step(scene.gaussians.get_asg_features, dir_pp_normalized)
                     image = torch.clamp(
                         renderFunc(viewpoint, scene.gaussians, *renderArgs, mlp_color)["render"],
                         0.0, 1.0)

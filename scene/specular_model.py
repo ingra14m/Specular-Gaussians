@@ -13,8 +13,8 @@ class SpecularModel:
         self.optimizer = None
         self.spatial_lr_scale = 5
 
-    def step(self, asg_feature, viewdir, normal):
-        return self.specular(asg_feature, viewdir, normal)
+    def step(self, asg_feature, viewdir):
+        return self.specular(asg_feature, viewdir)
 
     def train_setting(self, training_args):
         l = [

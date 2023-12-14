@@ -120,7 +120,7 @@ class ASGRender(torch.nn.Module):
         self.num_theta = 4
         self.num_phi = 8
         self.ch_normal_dot_viewdir = 1
-        self.in_mlpC = 2 * viewpe * 3 + 3 + self.num_theta * self.num_phi * 2 + self.ch_normal_dot_viewdir
+        self.in_mlpC = 2 * viewpe * 3 + 3 + self.num_theta * self.num_phi * 2
         self.viewpe = viewpe
         self.ree_function = RenderingEquationEncoding(self.num_theta, self.num_phi, 'cuda')
 
@@ -138,18 +138,15 @@ class ASGRender(torch.nn.Module):
     def safe_normalize(self, x, eps=1e-8):
         return x / (torch.norm(x, dim=-1, keepdim=True) + eps)
 
-    def forward(self, pts, viewdirs, features, normal):
+    def forward(self, pts, viewdirs, features):
         asg_params = features.view(-1, self.num_theta, self.num_phi, 4)  # [N, 8, 16, 4]
         a, la, mu = torch.split(asg_params, [2, 1, 1], dim=-1)
 
-        reflect_dir = self.safe_normalize(self.reflect(-viewdirs, normal))
-
-        color_feature = self.ree_function(reflect_dir, a, la, mu)
+        color_feature = self.ree_function(viewdirs, a, la, mu)
         # color_feature = color_feature.view(color_feature.size(0), -1, 3)
         color_feature = color_feature.view(color_feature.size(0), -1)  # [N, 256]
 
-        normal_dot_viewdir = ((-viewdirs) * normal).sum(dim=-1, keepdim=True)  # [N, 1]
-        indata = [color_feature, normal_dot_viewdir]
+        indata = [color_feature]
         if self.viewpe > -1:
             indata += [viewdirs]
         if self.viewpe > 0:
@@ -159,7 +156,7 @@ class ASGRender(torch.nn.Module):
         # rgb = torch.sum(color_feature, dim=1)
         # rgb = torch.sigmoid(rgb)
 
-        return rgb, reflect_dir
+        return rgb
 
 
 class IdentityActivation(nn.Module):
@@ -362,7 +359,7 @@ class SpecularNetwork(nn.Module):
 
         self.render_module = ASGRender(self.asg_hidden, 2, 2, 128)
 
-    def forward(self, x, view, normal):
+    def forward(self, x, view):
         # v_emb = self.embed_view_fn(view)
         # x_emb = self.embed_fn(x)
         # h = torch.cat([x_emb, v_emb], dim=-1)
@@ -374,7 +371,7 @@ class SpecularNetwork(nn.Module):
         #         h = torch.cat([x_emb, h], -1)
 
         feature = self.gaussian_feature(x)
-        spec, reflect_dir = self.render_module(x, view, feature, normal)
+        spec = self.render_module(x, view, feature)
         # reflect = self.env_module(reflect_dir)
 
         return spec
