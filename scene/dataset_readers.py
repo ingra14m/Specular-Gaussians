@@ -305,8 +305,6 @@ def readDTUCameras(path, render_camera, object_camera):
     n_images = len(images_lis)
     cam_infos = []
     for idx in range(0, n_images):
-        # idx = idx + cam_idx
-        # cam_idx = (cam_idx + 1)
         image_path = images_lis[idx]
         image = np.array(Image.open(image_path))
         mask = np.array(imageio.imread(masks_lis[idx])) / 255.0
@@ -384,7 +382,7 @@ def readNeuSDTUInfo(path, render_camera, object_camera):
     return scene_info
 
 
-def readCamerasFromNSVFPoses(path, idx, white_background, extension=".png", is_debug=False):
+def readCamerasFromNSVFPoses(path, idx, white_background, extension=".png"):
     cam_infos = []
     all_poses = sorted(os.listdir(os.path.join(path, "pose")))
     all_rgbs = sorted(os.listdir(os.path.join(path, "rgb")))
@@ -396,7 +394,7 @@ def readCamerasFromNSVFPoses(path, idx, white_background, extension=".png", is_d
         c2w = np.loadtxt(cam_name)
         w2c = np.linalg.inv(c2w)
 
-        R = np.transpose(w2c[:3, :3])  # R is stored transposed due to 'glm' in CUDA code
+        R = np.transpose(w2c[:3, :3])
         T = w2c[:3, 3]
 
         image_path = os.path.join(path, "rgb", all_rgbs[i])
@@ -423,7 +421,6 @@ def readCamerasFromNSVFPoses(path, idx, white_background, extension=".png", is_d
 
 
 def readNSVFSyntheticInfo(path, white_background, eval, extension=".png"):
-    all_poses = sorted(os.listdir(os.path.join(path, "pose")))
     all_rgbs = sorted(os.listdir(os.path.join(path, "rgb")))
 
     train_idx = [idx for idx, file_name in enumerate(all_rgbs) if file_name.startswith("0_")]
@@ -440,14 +437,13 @@ def readNSVFSyntheticInfo(path, white_background, eval, extension=".png"):
 
     nerf_normalization = getNerfppNorm(train_cam_infos)
 
-    # ply_path = os.path.join(path, "points3d.ply")
     ply_path = os.path.join(path, "points3d.ply")
     if not os.path.exists(ply_path):
         # Since this data set has no colmap data, we start with random points
         num_pts = 10_000
         print(f"Generating random point cloud ({num_pts})...")
 
-        # We create random points inside the bounds of the synthetic Blender scenes
+        # We create random points inside the bounds of the NSVF synthetic Blender scenes
         xyz = np.random.random((num_pts, 3)) * 2.6 - 1.3
         shs = np.random.random((num_pts, 3)) / 255.0
         pcd = BasicPointCloud(points=xyz, colors=SH2RGB(shs), normals=np.zeros((num_pts, 3)))
