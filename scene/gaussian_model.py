@@ -93,8 +93,6 @@ class GaussianModel:
     def get_normal_axis(self, dir_pp_normalized=None, return_delta=False):
         normal_axis = self.get_minimum_axis
         normal_axis, positive = flip_align_view(normal_axis, dir_pp_normalized)
-        # normal = normal_axis / normal_axis.norm(dim=1, keepdim=True)  # (N, 3)
-        # return normal
         delta_normal1 = self._normal  # (N, 3)
         delta_normal2 = self._normal2  # (N, 3)
         delta_normal = torch.stack([delta_normal1, delta_normal2], dim=-1)  # (N, 3, 2)
@@ -106,10 +104,6 @@ class GaussianModel:
             return normal, delta_normal
         else:
             return normal
-
-    @property
-    def get_normal(self):
-        return self._normal
 
     @property
     def get_minimum_axis(self):
@@ -127,9 +121,6 @@ class GaussianModel:
         features[:, :3, 0] = fused_color
         features[:, 3:, 1:] = 0.0
         asg_features = torch.zeros((fused_color.shape[0], self.max_asg_degree)).float().cuda()
-        roughness = torch.zeros((fused_color.shape[0], 1)).float().cuda()
-        albedo = torch.ones((fused_color.shape[0], 3)).float().cuda()
-        metallic = torch.zeros((fused_color.shape[0], 1)).float().cuda()
 
         print("Number of points at initialisation : ", fused_point_cloud.shape[0])
 
@@ -158,7 +149,6 @@ class GaussianModel:
         self.percent_dense = training_args.percent_dense
         self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
         self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
-        # is_fine_tune = training_args.fine_tune
 
         self.spatial_lr_scale = 5
 
@@ -199,11 +189,7 @@ class GaussianModel:
             if param_group["name"] == "xyz":
                 lr = self.xyz_scheduler_args(iteration)
                 param_group['lr'] = lr
-                # return lr
-            # if param_group["name"] == "f_asg":
-            #     lr = self.asg_scheduler_args(iteration)
-            #     param_group['lr'] = lr
-            # return lr
+
             if param_group["name"] == "normal":
                 lr = self.normal_scheduler_args(iteration)
                 param_group['lr'] = lr
@@ -229,7 +215,6 @@ class GaussianModel:
         mkdir_p(os.path.dirname(path))
 
         xyz = self._xyz.detach().cpu().numpy()
-        # normals = np.zeros_like(xyz)
         normals = self._normal.detach().cpu().numpy()
         normals2 = self._normal2.detach().cpu().numpy()
         f_dc = self._features_dc.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
@@ -290,16 +275,6 @@ class GaussianModel:
         f_asgs = np.zeros((xyz.shape[0], len(asg_names)))
         for idx, attr_name in enumerate(asg_names):
             f_asgs[:, idx] = np.asarray(plydata.elements[0][attr_name])
-
-        # normal_names = [p.name for p in plydata.elements[0].properties if p.name.startswith("normal_")]
-        # normal = np.zeros((xyz.shape[0], len(normal_names)))
-        # for idx, attr_name in enumerate(normal_names):
-        #     normal[:, idx] = np.asarray(plydata.elements[0][attr_name])
-
-        # normal2_names = [p.name for p in plydata.elements[0].properties if p.name.startswith("normal2_")]
-        # normal2 = np.zeros((xyz.shape[0], len(normal2_names)))
-        # for idx, attr_name in enumerate(normal2_names):
-        #     normal2[:, idx] = np.asarray(plydata.elements[0][attr_name])
 
         normal = np.stack((np.asarray(plydata.elements[0]["nx"]),
                            np.asarray(plydata.elements[0]["ny"]),

@@ -1,6 +1,6 @@
 # Spec-Gaussian: Anisotropic View-Dependent Appearance for 3D Gaussian Splatting
 
-
+![teaser](assets/teaser.png)
 
 ## Dataset
 
@@ -60,9 +60,23 @@ pip install -r requirements.txt
 
 
 
+## Pipeline
+
+![pipeline](assets/pipeline.png)
+
+
+
 ## Results
 
+### Synthetic Scenes
 
+![synthetic](assets/synthetic.png)
+
+
+
+### Real-world Scenes
+
+![real](assets/real.png)
 
 ## BibTex
 

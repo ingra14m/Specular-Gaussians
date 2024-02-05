@@ -206,22 +206,6 @@ def flip_align_view(normal, viewdir):
     return normal_flipped, non_flip
 
 
-def linear_to_srgb(linear):
-    if isinstance(linear, torch.Tensor):
-        """Assumes `linear` is in [0, 1], see https://en.wikipedia.org/wiki/SRGB."""
-        eps = torch.finfo(torch.float32).eps
-        srgb0 = 323 / 25 * linear
-        srgb1 = (211 * torch.clamp(linear, min=eps) ** (5 / 12) - 11) / 200
-        return torch.where(linear <= 0.0031308, srgb0, srgb1)
-    elif isinstance(linear, np.ndarray):
-        eps = np.finfo(np.float32).eps
-        srgb0 = 323 / 25 * linear
-        srgb1 = (211 * np.maximum(eps, linear) ** (5 / 12) - 11) / 200
-        return np.where(linear <= 0.0031308, srgb0, srgb1)
-    else:
-        raise NotImplementedError
-
-
 def depth2normal(depth: torch.Tensor, focal: float = None):
     if depth.dim() == 2:
         depth = depth[None, None]
@@ -242,8 +226,3 @@ def depth2normal(depth: torch.Tensor, focal: float = None):
     normal = torch.cat([normal, torch.ones_like(normal[..., :1])], dim=-1)
     normal = normal / normal.norm(dim=-1, keepdim=True)
     return normal.permute(2, 0, 1)
-
-
-def reflect(viewdir, normal):
-    out = 2 * (viewdir * normal).sum(dim=-1, keepdim=True) * normal - viewdir
-    return out

@@ -2,10 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from utils.rigid_utils import exp_se3
 from utils.quaternion_utils import init_predefined_omega
-from utils.general_utils import linear_to_srgb
-from utils.ref_utils import generate_ide_fn
 
 
 def get_embedder(multires, i=1):

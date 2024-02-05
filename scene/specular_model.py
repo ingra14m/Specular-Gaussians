@@ -24,10 +24,6 @@ class SpecularModel:
         ]
         self.optimizer = torch.optim.Adam(l, lr=0.0, eps=1e-15)
 
-        # self.specular_scheduler_args = get_expon_lr_func(lr_init=training_args.feature_lr,
-        #                                               lr_final=training_args.feature_lr / 20,
-        #                                               lr_delay_mult=training_args.position_lr_delay_mult,
-        #                                               max_steps=training_args.specular_lr_max_steps)
         self.specular_scheduler_args = get_linear_noise_func(lr_init=training_args.feature_lr,
                                                              lr_final=training_args.feature_lr / 20,
                                                              lr_delay_mult=training_args.position_lr_delay_mult,
@@ -47,7 +43,6 @@ class SpecularModel:
         self.specular.load_state_dict(torch.load(weights_path))
 
     def update_learning_rate(self, iteration):
-        # pass
         for param_group in self.optimizer.param_groups:
             if param_group["name"] == "specular":
                 lr = self.specular_scheduler_args(iteration)

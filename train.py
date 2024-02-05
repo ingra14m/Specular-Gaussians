@@ -12,11 +12,11 @@
 import os
 import torch
 from random import randint
-from utils.loss_utils import l1_loss, ssim, kl_divergence, l2_loss, l3_loss
+from utils.loss_utils import l1_loss, ssim, l2_loss
 from gaussian_renderer import render, network_gui, prefilter_voxel
 import sys
 from scene import Scene, GaussianModel, SpecularModel
-from utils.general_utils import safe_state, get_linear_noise_func, linear_to_srgb, reflect
+from utils.general_utils import safe_state
 import uuid
 from tqdm import tqdm
 from utils.image_utils import psnr
@@ -51,7 +51,6 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
     best_psnr = 0.0
     best_iteration = 0
     progress_bar = tqdm(range(opt.iterations), desc="Training progress")
-    smooth_term = get_linear_noise_func(lr_init=0.1, lr_final=1e-15, lr_delay_mult=0.01, max_steps=20000)
     for iteration in range(1, opt.iterations + 1):
 
         iter_start.record()
@@ -65,7 +64,6 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
             viewpoint_stack = scene.getTrainCameras().copy()
 
         viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack) - 1))
-        # normal_ref = viewpoint_cam.depth.permute(2, 0, 1)
         if dataset.load2gpu_on_the_fly:
             viewpoint_cam.load2device()
 
@@ -90,19 +88,10 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
         image, viewspace_point_tensor, visibility_filter, radii = render_pkg_re["render"], render_pkg_re[
             "viewspace_points"], render_pkg_re["visibility_filter"], render_pkg_re["radii"]
 
-        # beta = render(viewpoint_cam, gaussians, pipe, background, gaussians.get_albedo, hybrid=False)["render"]
-
         # Loss
         gt_image = viewpoint_cam.original_image.cuda()
         Ll1 = l1_loss(image, gt_image)
-        # beta_tmp = torch.log(beta ** 2) / 2
-        # beta_loss = l2_loss(beta_tmp, torch.zeros_like(beta_tmp))
         loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image)) + normal_loss
-        # if iteration > 3000:
-        #     residual_color = \
-        #     render(viewpoint_cam, gaussians, pipe, background, render_pkg_re["residual"], hybrid=False)["render"]
-        #     reflect_loss = l1_loss(gt_image - image, residual_color) * 0.3
-        #     loss = loss + reflect_loss
         loss.backward()
 
         iter_end.record()
@@ -218,14 +207,13 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                     dir_pp = (scene.gaussians.get_xyz - viewpoint.camera_center.repeat(
                         scene.gaussians.get_features.shape[0], 1))
                     dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-                    normal, normal_delta = scene.gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized,
+                    normal, _ = scene.gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized,
                                                                            return_delta=True)
                     mlp_color = specular_mlp.step(scene.gaussians.get_asg_features[voxel_visible_mask],
                                                   dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
                     image = torch.clamp(
                         renderFunc(viewpoint, scene.gaussians, *renderArgs, mlp_color,
-                                   voxel_visible_mask=voxel_visible_mask)["render"],
-                        0.0, 1.0)
+                                   voxel_visible_mask=voxel_visible_mask)["render"], 0.0, 1.0)
                     gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
                     images = torch.cat((images, image.unsqueeze(0)), dim=0)
                     gts = torch.cat((gts, gt_image.unsqueeze(0)), dim=0)
