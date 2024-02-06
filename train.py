@@ -68,7 +68,6 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
             viewpoint_cam.load2device()
 
         N = gaussians.get_xyz.shape[0]
-        normal_loss = 0
 
         use_filter = False
 
@@ -76,10 +75,9 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
         if iteration > 3000:
             dir_pp = (gaussians.get_xyz - viewpoint_cam.camera_center.repeat(gaussians.get_features.shape[0], 1))
             dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-            normal, normal_delta = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
+            normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
             mlp_color = specular_mlp.step(gaussians.get_asg_features[voxel_visible_mask],
                                           dir_pp_normalized[voxel_visible_mask], normal.detach()[voxel_visible_mask])
-            normal_loss = l2_loss(normal_delta, torch.zeros_like(normal_delta))
         else:
             mlp_color = 0
 
@@ -91,7 +89,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
         # Loss
         gt_image = viewpoint_cam.original_image.cuda()
         Ll1 = l1_loss(image, gt_image)
-        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image)) + normal_loss
+        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
         loss.backward()
 
         iter_end.record()
@@ -207,7 +205,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                     dir_pp = (scene.gaussians.get_xyz - viewpoint.camera_center.repeat(
                         scene.gaussians.get_features.shape[0], 1))
                     dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-                    normal, _ = scene.gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized,
+                    normal = scene.gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized,
                                                                            return_delta=True)
                     mlp_color = specular_mlp.step(scene.gaussians.get_asg_features[voxel_visible_mask],
                                                   dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])

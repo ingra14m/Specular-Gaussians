@@ -37,11 +37,11 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
     makedirs(normal_path, exist_ok=True)
 
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
-        voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background)
-        # voxel_visible_mask = torch.ones_like(gaussians.get_xyz)[..., 0].bool()
+        # voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background)
+        voxel_visible_mask = torch.ones_like(gaussians.get_xyz)[..., 0].bool()
         dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-        normal, _ = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
+        normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
         mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask], dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
         results = render(view, gaussians, pipeline, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
         normal_image = render(view, gaussians, pipeline, background, normal[voxel_visible_mask] * 0.5 + 0.5, hybrid=False, voxel_visible_mask=voxel_visible_mask)["render"]
