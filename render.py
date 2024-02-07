@@ -23,6 +23,7 @@ from arguments import ModelParams, PipelineParams, OptimizationParams, get_combi
 from gaussian_renderer import GaussianModel
 import imageio
 import numpy as np
+import time
 
 
 def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussians, pipeline, background, specular, use_filter):
@@ -36,13 +37,23 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
     makedirs(depth_path, exist_ok=True)
     makedirs(normal_path, exist_ok=True)
 
+    t_list = []
+
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
+        torch.cuda.synchronize()
+        t_start = time.time()
+
         voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background) if use_filter else torch.ones_like(gaussians.get_xyz)[..., 0].bool()
         dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
         normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
         mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask], dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
         results = render(view, gaussians, pipeline, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
+        
+        torch.cuda.synchronize()
+        t_end = time.time()
+
+        t_list.append(t_end - t_start)
         normal_image = render(view, gaussians, pipeline, background, normal[voxel_visible_mask] * 0.5 + 0.5, hybrid=False, voxel_visible_mask=voxel_visible_mask)["render"]
         rendering = results["render"]
         depth = results["depth"]
@@ -53,6 +64,10 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
         torchvision.utils.save_image(gt, os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
         torchvision.utils.save_image(depth, os.path.join(depth_path, '{0:05d}'.format(idx) + ".png"))
         torchvision.utils.save_image(normal_image, os.path.join(normal_path, '{0:05d}'.format(idx) + ".png"))
+
+    t = np.array(t_list[5:])
+    fps = 1.0 / t.mean()
+    print(f'Test FPS: \033[1;35m{fps:.5f}\033[0m')
 
 
 def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gaussians, pipeline, background, specular, use_filter):

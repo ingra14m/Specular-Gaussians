@@ -53,8 +53,6 @@ def evaluate(model_paths):
             test_dir = Path(scene_dir) / "test"
 
             for method in os.listdir(test_dir):
-                if not method.startswith("ours"):
-                    continue
                 print("Method:", method)
 
                 full_dict[scene_dir][method] = {}

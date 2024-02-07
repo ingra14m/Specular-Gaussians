@@ -20,8 +20,11 @@ from utils.general_utils import safe_state
 import uuid
 from tqdm import tqdm
 from utils.image_utils import psnr
+from utils.general_utils import get_linear_noise_func
 from argparse import ArgumentParser, Namespace
 from arguments import ModelParams, PipelineParams, OptimizationParams
+from render import render_sets
+from metrics import evaluate
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -50,6 +53,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
     ema_loss_for_log = 0.0
     best_psnr = 0.0
     best_iteration = 0
+    use_filter = opt.use_filter
     progress_bar = tqdm(range(opt.iterations), desc="Training progress")
     for iteration in range(1, opt.iterations + 1):
 
@@ -68,8 +72,6 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
             viewpoint_cam.load2device()
 
         N = gaussians.get_xyz.shape[0]
-
-        use_filter = opt.use_filter
 
         voxel_visible_mask = prefilter_voxel(viewpoint_cam, gaussians, pipe, background) if use_filter else torch.ones([N,], device=gaussians.get_xyz.device, dtype=torch.bool)
         if iteration > 3000:
@@ -270,3 +272,13 @@ if __name__ == "__main__":
 
     # All done
     print("\nTraining complete.")
+
+    # rendering
+    print(f'\nStarting Rendering~')
+    render_sets(lp.extract(args), -1, op.extract(args), pp.extract(args), skip_train=True, skip_test=False, mode="render")
+    print("\nRendering complete.")
+
+    # calc metrics
+    print("\n Starting evaluation...")
+    evaluate(args.model_path)
+    print("\nEvaluating complete.")
