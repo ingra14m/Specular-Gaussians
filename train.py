@@ -69,7 +69,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
 
         N = gaussians.get_xyz.shape[0]
 
-        use_filter = False
+        use_filter = opt.use_filter
 
         voxel_visible_mask = prefilter_voxel(viewpoint_cam, gaussians, pipe, background) if use_filter else torch.ones([N,], device=gaussians.get_xyz.device, dtype=torch.bool)
         if iteration > 3000:

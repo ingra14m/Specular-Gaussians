@@ -19,13 +19,13 @@ import torchvision
 from utils.general_utils import safe_state
 from utils.pose_utils import pose_spherical, render_wander_path
 from argparse import ArgumentParser
-from arguments import ModelParams, PipelineParams, get_combined_args
+from arguments import ModelParams, PipelineParams, OptimizationParams, get_combined_args
 from gaussian_renderer import GaussianModel
 import imageio
 import numpy as np
 
 
-def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussians, pipeline, background, specular):
+def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussians, pipeline, background, specular, use_filter):
     render_path = os.path.join(model_path, name, "ours_{}".format(iteration), "renders")
     gts_path = os.path.join(model_path, name, "ours_{}".format(iteration), "gt")
     depth_path = os.path.join(model_path, name, "ours_{}".format(iteration), "depth")
@@ -37,8 +37,7 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
     makedirs(normal_path, exist_ok=True)
 
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
-        # voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background)
-        voxel_visible_mask = torch.ones_like(gaussians.get_xyz)[..., 0].bool()
+        voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background) if use_filter else torch.ones_like(gaussians.get_xyz)[..., 0].bool()
         dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
         normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
@@ -56,7 +55,7 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
         torchvision.utils.save_image(normal_image, os.path.join(normal_path, '{0:05d}'.format(idx) + ".png"))
 
 
-def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gaussians, pipeline, background, specular):
+def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gaussians, pipeline, background, specular, use_filter):
     render_path = os.path.join(model_path, name, "interpolate_all_{}".format(iteration), "renders")
     depth_path = os.path.join(model_path, name, "interpolate_all_{}".format(iteration), "depth")
 
@@ -81,7 +80,7 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
 
         view.reset_extrinsic(R, T)
 
-        voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background)
+        voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background) if use_filter else torch.ones_like(gaussians.get_xyz)[..., 0].bool()
         dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
         normal, _ = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
@@ -100,7 +99,7 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
     imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=30, quality=8)
 
 
-def render_sets(dataset: ModelParams, iteration: int, pipeline: PipelineParams, skip_train: bool, skip_test: bool,
+def render_sets(dataset: ModelParams, iteration: int, opt: OptimizationParams, pipeline: PipelineParams, skip_train: bool, skip_test: bool,
                 mode: str):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree, dataset.asg_degree)
@@ -119,18 +118,19 @@ def render_sets(dataset: ModelParams, iteration: int, pipeline: PipelineParams, 
         if not skip_train:
             render_func(dataset.model_path, dataset.load2gpu_on_the_fly, "train", scene.loaded_iter,
                         scene.getTrainCameras(), gaussians, pipeline,
-                        background, specular)
+                        background, specular, opt.use_filter)
 
         if not skip_test:
             render_func(dataset.model_path, dataset.load2gpu_on_the_fly, "test", scene.loaded_iter,
                         scene.getTestCameras(), gaussians, pipeline,
-                        background, specular)
+                        background, specular, opt.use_filter)
 
 
 if __name__ == "__main__":
     # Set up command line argument parser
     parser = ArgumentParser(description="Testing script parameters")
     model = ModelParams(parser, sentinel=True)
+    op = OptimizationParams(parser)
     pipeline = PipelineParams(parser)
     parser.add_argument("--iteration", default=-1, type=int)
     parser.add_argument("--skip_train", action="store_true")
@@ -143,4 +143,4 @@ if __name__ == "__main__":
     # Initialize system state (RNG)
     safe_state(args.quiet)
 
-    render_sets(model.extract(args), args.iteration, pipeline.extract(args), args.skip_train, args.skip_test, args.mode)
+    render_sets(model.extract(args), args.iteration, op.extract(args), pipeline.extract(args), args.skip_train, args.skip_test, args.mode)
