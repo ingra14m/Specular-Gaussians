@@ -37,7 +37,7 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
     """
 
     # Create zero tensor. We will use it to make pytorch return gradients of the 2D (screen-space) means
-    screenspace_points = torch.zeros_like(pc.get_xyz[voxel_visible_mask], dtype=pc.get_xyz.dtype, requires_grad=True, device="cuda") + 0
+    screenspace_points = torch.zeros_like(pc.get_xyz if voxel_visible_mask is None else pc.get_xyz[voxel_visible_mask], dtype=pc.get_xyz.dtype, requires_grad=True, device="cuda") + 0
     try:
         screenspace_points.retain_grad()
     except:
@@ -86,7 +86,6 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
     # from SHs in Python, do it. If not, then SH -> RGB conversion will be done by rasterizer.
     shs = None
     colors_precomp = None
-    residual = None
     # colors_precomp = mlp_color
     if colors_precomp is None:
         if hybrid:
@@ -94,8 +93,6 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
             dir_pp = (means3D - viewpoint_camera.camera_center.repeat(means3D.shape[0], 1))
             dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
             sh2rgb = eval_sh(pc.active_sh_degree, shs_view if voxel_visible_mask is None else shs_view[voxel_visible_mask], dir_pp_normalized)
-            # rgb_diffuse = eval_sh(0, shs_view, dir_pp_normalized)
-            # residual = sh2rgb - rgb_diffuse
             colors_precomp = torch.clamp_min(sh2rgb + 0.5, 0.0) + mlp_color
         else:
             # shs = pc.get_features
@@ -120,8 +117,7 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
             "viewspace_points": screenspace_points,
             "visibility_filter": radii > 0,
             "radii": radii,
-            "depth": depth,
-            "residual": residual}
+            "depth": depth}
 
 
 def prefilter_voxel(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, scaling_modifier=1.0,

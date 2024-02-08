@@ -55,6 +55,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
     best_iteration = 0
     use_filter = opt.use_filter
     progress_bar = tqdm(range(opt.iterations), desc="Training progress")
+    voxel_visible_mask = None
     for iteration in range(1, opt.iterations + 1):
 
         iter_start.record()
@@ -73,20 +74,24 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
 
         N = gaussians.get_xyz.shape[0]
 
-        voxel_visible_mask = prefilter_voxel(viewpoint_cam, gaussians, pipe, background) if use_filter else torch.ones([N,], device=gaussians.get_xyz.device, dtype=torch.bool)
+        if use_filter:
+            voxel_visible_mask = prefilter_voxel(viewpoint_cam, gaussians, pipe, background)
+
         if iteration > 3000:
             dir_pp = (gaussians.get_xyz - viewpoint_cam.camera_center.repeat(gaussians.get_features.shape[0], 1))
             dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
             normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
-            mlp_color = specular_mlp.step(gaussians.get_asg_features[voxel_visible_mask],
-                                          dir_pp_normalized[voxel_visible_mask], normal.detach()[voxel_visible_mask])
+            if use_filter:
+                mlp_color = specular_mlp.step(gaussians.get_asg_features[voxel_visible_mask],
+                                              dir_pp_normalized[voxel_visible_mask], normal.detach()[voxel_visible_mask])
+            else:
+                mlp_color = specular_mlp.step(gaussians.get_asg_features, dir_pp_normalized, normal.detach())
         else:
             mlp_color = 0
 
-        render_pkg_re = render(viewpoint_cam, gaussians, pipe, background, mlp_color,
-                               voxel_visible_mask=voxel_visible_mask)
-        image, viewspace_point_tensor, visibility_filter, radii = render_pkg_re["render"], render_pkg_re[
-            "viewspace_points"], render_pkg_re["visibility_filter"], render_pkg_re["radii"]
+        render_pkg = render(viewpoint_cam, gaussians, pipe, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
+        image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg[
+            "viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
 
         # Loss
         gt_image = viewpoint_cam.original_image.cuda()
@@ -134,7 +139,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
 
             # Densification
             if iteration < opt.densify_until_iter:
-                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter, voxel_visible_mask)
+                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter, voxel_visible_mask, use_filter)
 
                 if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
                     size_threshold = 20 if iteration > opt.opacity_reset_interval else None
@@ -187,6 +192,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
         tb_writer.add_scalar('iter_time', elapsed, iteration)
 
     test_psnr = 0.0
+    voxel_visible_mask = None
     # Report test and samples of training set
     if iteration in testing_iterations:
         torch.cuda.empty_cache()
@@ -203,14 +209,18 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                     if load2gpu_on_the_fly:
                         viewpoint.load2device()
 
-                    voxel_visible_mask = prefilter_voxel(viewpoint, scene.gaussians, *renderArgs) if use_filter else torch.ones_like(scene.gaussians.get_xyz)[..., 0].bool()
+                    if use_filter:
+                        voxel_visible_mask = prefilter_voxel(viewpoint, scene.gaussians, *renderArgs)
                     dir_pp = (scene.gaussians.get_xyz - viewpoint.camera_center.repeat(
                         scene.gaussians.get_features.shape[0], 1))
                     dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-                    normal = scene.gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized,
-                                                                           return_delta=True)
-                    mlp_color = specular_mlp.step(scene.gaussians.get_asg_features[voxel_visible_mask],
-                                                  dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
+                    normal = scene.gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
+                    if use_filter:
+                        mlp_color = specular_mlp.step(scene.gaussians.get_asg_features[voxel_visible_mask],
+                                                      dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
+                    else:
+                        mlp_color = specular_mlp.step(scene.gaussians.get_asg_features, dir_pp_normalized, normal)
+                        
                     image = torch.clamp(
                         renderFunc(viewpoint, scene.gaussians, *renderArgs, mlp_color,
                                    voxel_visible_mask=voxel_visible_mask)["render"], 0.0, 1.0)
@@ -280,5 +290,5 @@ if __name__ == "__main__":
 
     # calc metrics
     print("\n Starting evaluation...")
-    evaluate(args.model_path)
+    evaluate([str(args.model_path)])
     print("\nEvaluating complete.")
