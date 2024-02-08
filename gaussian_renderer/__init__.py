@@ -10,6 +10,7 @@
 #
 
 import torch
+from einops import repeat
 import math
 from diff_gaussian_rasterization import GaussianRasterizationSettings, GaussianRasterizer
 from scene.gaussian_model import GaussianModel
@@ -194,19 +195,6 @@ def generate_neural_gaussians(viewpoint_camera, pc: AnchorGaussianModel, visible
     ob_dist = ob_view.norm(dim=1, keepdim=True)
     # view
     ob_view = ob_view / ob_dist
-
-    ## view-adaptive feature
-    if pc.use_feat_bank:
-        cat_view = torch.cat([ob_view, ob_dist], dim=1)
-
-        bank_weight = pc.get_featurebank_mlp(cat_view).unsqueeze(dim=1)  # [n, 1, 3]
-
-        ## multi-resolution feat
-        feat = feat.unsqueeze(dim=-1)
-        feat = feat[:, ::4, :1].repeat([1, 4, 1]) * bank_weight[:, :, :1] + \
-               feat[:, ::2, :1].repeat([1, 2, 1]) * bank_weight[:, :, 1:2] + \
-               feat[:, ::1, :1] * bank_weight[:, :, 2:]
-        feat = feat.squeeze(dim=-1)  # [n, c]
 
     cat_local_view = torch.cat([feat, ob_view, ob_dist], dim=1)  # [N, c+3]
 

@@ -180,7 +180,7 @@ class SpecularNetwork(nn.Module):
 
 class AnchorSpecularNetwork(nn.Module):
     def __init__(self, feature_dims):
-        super(SpecularNetwork, self).__init__()
+        super(AnchorSpecularNetwork, self).__init__()
 
         self.asg_feature = feature_dims
         self.num_theta = 2

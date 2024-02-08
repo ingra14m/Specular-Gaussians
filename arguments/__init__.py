@@ -115,6 +115,7 @@ class AnchorModelParams(ParamGroup):
         self._white_background = False
         self.data_device = "cuda"
         self.eval = False
+        self.load2gpu_on_the_fly = False
         super().__init__(parser, "Loading Parameters", sentinel)
 
     def extract(self, args):
