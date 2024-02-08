@@ -38,16 +38,21 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
     makedirs(normal_path, exist_ok=True)
 
     t_list = []
+    voxel_visible_mask = None
 
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
         torch.cuda.synchronize()
         t_start = time.time()
 
-        voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background) if use_filter else torch.ones_like(gaussians.get_xyz)[..., 0].bool()
+        if use_filter:
+            voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background)
         dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
         normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
-        mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask], dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
+        if use_filter:
+            mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask], dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
+        else:
+            mlp_color = specular.step(gaussians.get_asg_features, dir_pp_normalized, normal)
         results = render(view, gaussians, pipeline, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
         
         torch.cuda.synchronize()
