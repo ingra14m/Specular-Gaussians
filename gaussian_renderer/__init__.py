@@ -64,20 +64,23 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
 
     rasterizer = GaussianRasterizer(raster_settings=raster_settings)
 
-    means3D = pc.get_xyz[voxel_visible_mask]
     means2D = screenspace_points
-    opacity = pc.get_opacity[voxel_visible_mask]
+    if voxel_visible_mask is None:
+        means3D = pc.get_xyz
+        opacity = pc.get_opacity
+        scales = pc.get_scaling
+        rotations = pc.get_rotation
+    else:
+        means3D = pc.get_xyz[voxel_visible_mask]
+        opacity = pc.get_opacity[voxel_visible_mask]
+        scales = pc.get_scaling[voxel_visible_mask]
+        rotations = pc.get_rotation[voxel_visible_mask]
 
     # If precomputed 3d covariance is provided, use it. If not, then it will be computed from
     # scaling / rotation by the rasterizer.
-    scales = None
-    rotations = None
     cov3D_precomp = None
     if pipe.compute_cov3D_python:
         cov3D_precomp = pc.get_covariance(scaling_modifier)
-    else:
-        scales = pc.get_scaling[voxel_visible_mask]
-        rotations = pc.get_rotation[voxel_visible_mask]
 
     # If precomputed colors are provided, use them. Otherwise, if it is desired to precompute colors
     # from SHs in Python, do it. If not, then SH -> RGB conversion will be done by rasterizer.
@@ -88,9 +91,9 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
     if colors_precomp is None:
         if hybrid:
             shs_view = pc.get_features.transpose(1, 2).view(-1, 3, (pc.max_sh_degree + 1) ** 2)
-            dir_pp = (pc.get_xyz - viewpoint_camera.camera_center.repeat(pc.get_features.shape[0], 1))
+            dir_pp = (means3D - viewpoint_camera.camera_center.repeat(means3D.shape[0], 1))
             dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-            sh2rgb = eval_sh(pc.active_sh_degree, shs_view[voxel_visible_mask], dir_pp_normalized[voxel_visible_mask])
+            sh2rgb = eval_sh(pc.active_sh_degree, shs_view if voxel_visible_mask is None else shs_view[voxel_visible_mask], dir_pp_normalized)
             # rgb_diffuse = eval_sh(0, shs_view, dir_pp_normalized)
             # residual = sh2rgb - rgb_diffuse
             colors_precomp = torch.clamp_min(sh2rgb + 0.5, 0.0) + mlp_color
