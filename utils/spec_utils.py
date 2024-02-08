@@ -110,11 +110,11 @@ class SGEnvmap(torch.nn.Module):
 
 
 class ASGRender(torch.nn.Module):
-    def __init__(self, inChanel, viewpe=6, feape=6, featureC=128):
+    def __init__(self, inChanel, viewpe=6, feape=6, featureC=128, num_theta=4, num_phi=8):
         super(ASGRender, self).__init__()
 
-        self.num_theta = 4
-        self.num_phi = 8
+        self.num_theta = num_theta
+        self.num_phi = num_phi
         self.ch_normal_dot_viewdir = 1
         self.in_mlpC = 2 * viewpe * 3 + 3 + self.num_theta * self.num_phi * 2 + self.ch_normal_dot_viewdir
         self.viewpe = viewpe
@@ -159,31 +159,13 @@ class ASGRender(torch.nn.Module):
 
 
 class SpecularNetwork(nn.Module):
-    def __init__(self, D=4, W=128, input_ch=3, output_ch=59, view_multires=4, multires=4):
+    def __init__(self):
         super(SpecularNetwork, self).__init__()
-        self.D = D
-        self.W = W
-        self.input_ch = input_ch
-        self.output_ch = output_ch
-        self.view_multires = view_multires
-        self.skips = [D // 2]
 
         self.asg_feature = 24
         self.num_theta = 4
         self.num_phi = 8
-        # self.asg_hidden = self.num_theta * self.num_phi * 5
         self.asg_hidden = self.num_theta * self.num_phi * 4
-
-        # self.embed_view_fn, view_input_ch = get_embedder(view_multires, 3)
-        # self.embed_fn, xyz_input_ch = get_embedder(multires, self.asg_feature)
-        # self.input_ch = xyz_input_ch
-
-        # self.linear = nn.ModuleList(
-        #     [nn.Linear(self.input_ch, W)] + [
-        #         nn.Linear(W, W) if i not in self.skips else nn.Linear(W + self.input_ch, W)
-        #         for i in range(D - 1)]
-        # )
-        # self.env_module = SGEnvmap()
 
         self.gaussian_feature = nn.Linear(self.asg_feature, self.asg_hidden)
 
@@ -194,3 +176,29 @@ class SpecularNetwork(nn.Module):
         spec = self.render_module(x, view, feature, normal)
 
         return spec
+    
+
+class AnchorSpecularNetwork(nn.Module):
+    def __init__(self, feature_dims):
+        super(SpecularNetwork, self).__init__()
+
+        self.asg_feature = feature_dims
+        self.num_theta = 2
+        self.num_phi = 4
+        self.asg_hidden = self.num_theta * self.num_phi * 4
+
+        self.gaussian_feature = nn.Linear(self.asg_feature + 3, self.asg_hidden)
+        self.gaussian_diffuse = nn.Linear(self.asg_feature, 3)
+        self.gaussian_normal = nn.Linear(self.asg_feature + 3, 3)
+
+        self.render_module = ASGRender(self.asg_hidden, 2, 2, 64, num_theta=2, num_phi=4)
+
+    def forward(self, x, view, normal_center, offset):
+        feature = self.gaussian_feature(torch.cat([x, view], dim=-1))
+        diffuse = self.gaussian_diffuse(x)
+        normal_delta = self.gaussian_normal(torch.cat([x, offset], dim=-1))
+        normal = F.normalize(normal_center + normal_delta, dim=-1)
+        spec = self.render_module(x, view, feature, normal)
+        rgb = diffuse + spec
+
+        return rgb

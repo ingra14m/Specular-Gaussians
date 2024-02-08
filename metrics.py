@@ -21,6 +21,8 @@ from tqdm import tqdm
 from utils.image_utils import psnr
 from argparse import ArgumentParser
 
+lpips_fn = lpips.LPIPS(net='vgg').to('cuda')
+
 
 def readImages(renders_dir, gt_dir):
     renders = []
@@ -98,7 +100,6 @@ def evaluate(model_paths):
 if __name__ == "__main__":
     device = torch.device("cuda:0")
     torch.cuda.set_device(device)
-    lpips_fn = lpips.LPIPS(net='vgg').to(device)
 
     # Set up command line argument parser
     parser = ArgumentParser(description="Training script parameters")
