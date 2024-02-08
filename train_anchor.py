@@ -86,10 +86,10 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
         if (iteration - 1) == debug_from:
             pipe.debug = True
 
-        voxel_visible_mask = prefilter_voxel(viewpoint_cam, gaussians, pipe, background)
+        voxel_visible_mask = anchor_prefilter_voxel(viewpoint_cam, gaussians, pipe, background)
         retain_grad = (iteration < opt.update_until and iteration >= 0)
         down_sampling = smooth_term(iteration) if use_c2f else 1.0
-        render_pkg = render(viewpoint_cam, gaussians, pipe, background, visible_mask=voxel_visible_mask,
+        render_pkg = anchor_render(viewpoint_cam, gaussians, pipe, background, visible_mask=voxel_visible_mask,
                             retain_grad=retain_grad, down_sampling=down_sampling)
 
         image, viewspace_point_tensor, visibility_filter, offset_selection_mask, radii, scaling, opacity = render_pkg[
@@ -120,7 +120,7 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
 
             # Log and save
             training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
-                            testing_iterations, scene, render, (pipe, background), logger)
+                            testing_iterations, scene, anchor_render, (pipe, background), logger)
             if (iteration in saving_iterations):
                 logger.info("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration)
@@ -173,7 +173,7 @@ def prepare_output_and_logger(args):
     return tb_writer
 
 
-def training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene: Scene,
+def training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene: AnchorScene,
                     renderFunc, renderArgs, logger=None):
     if tb_writer:
         tb_writer.add_scalar(f'{dataset_name}/train_loss_patches/l1_loss', Ll1.item(), iteration)
@@ -195,7 +195,7 @@ def training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, elap
                 psnr_test = 0.0
 
                 for idx, viewpoint in enumerate(config['cameras']):
-                    voxel_visible_mask = prefilter_voxel(viewpoint, scene.gaussians, *renderArgs)
+                    voxel_visible_mask = anchor_prefilter_voxel(viewpoint, scene.gaussians, *renderArgs)
                     image = torch.clamp(
                         renderFunc(viewpoint, scene.gaussians, *renderArgs, visible_mask=voxel_visible_mask)["render"],
                         0.0, 1.0)
@@ -252,8 +252,8 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
         torch.cuda.synchronize();
         t_start = time.time()
 
-        voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background)
-        render_pkg = render(view, gaussians, pipeline, background, visible_mask=voxel_visible_mask)
+        voxel_visible_mask = anchor_prefilter_voxel(view, gaussians, pipeline, background)
+        render_pkg = anchor_render(view, gaussians, pipeline, background, visible_mask=voxel_visible_mask)
         torch.cuda.synchronize();
         t_end = time.time()
 
