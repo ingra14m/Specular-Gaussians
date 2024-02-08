@@ -22,7 +22,7 @@ from PIL import Image
 import lpips
 from random import randint
 from utils.loss_utils import l1_loss, ssim
-from gaussian_renderer import prefilter_voxel, render
+from gaussian_renderer import anchor_prefilter_voxel, anchor_render
 import sys
 from scene import AnchorScene, AnchorGaussianModel
 from utils.general_utils import safe_state
