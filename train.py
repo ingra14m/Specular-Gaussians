@@ -289,6 +289,6 @@ if __name__ == "__main__":
     print("\nRendering complete.")
 
     # calc metrics
-    print("\n Starting evaluation...")
+    print("\nStarting evaluation...")
     evaluate([str(args.model_path)])
     print("\nEvaluating complete.")

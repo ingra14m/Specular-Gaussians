@@ -289,7 +289,7 @@ def render_sets(dataset: AnchorModelParams, iteration: int, pipeline: PipelinePa
                 tb_writer=None, dataset_name=None, logger=None):
     with torch.no_grad():
         gaussians = AnchorGaussianModel(dataset.feat_dim, dataset.n_offsets, dataset.voxel_size, dataset.update_depth,
-                                  dataset.update_init_factor, dataset.update_hierachy_factor, dataset.use_feat_bank)
+                                  dataset.update_init_factor, dataset.update_hierachy_factor)
         scene = AnchorScene(dataset, gaussians, load_iteration=iteration, shuffle=False)
         gaussians.eval()
 
@@ -449,6 +449,6 @@ if __name__ == "__main__":
     logger.info("\nRendering complete.")
 
     # calc metrics
-    logger.info("\n Starting evaluation...")
+    logger.info("\nStarting evaluation...")
     evaluate(args.model_path, visible_count=visible_count, logger=logger)
     logger.info("\nEvaluating complete.")
