@@ -52,7 +52,7 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = AnchorGaussianModel(dataset.feat_dim, dataset.n_offsets, dataset.voxel_size, dataset.update_depth,
-                              dataset.update_init_factor, dataset.update_hierachy_factor, dataset.use_feat_bank)
+                              dataset.update_init_factor, dataset.update_hierachy_factor)
     scene = AnchorScene(dataset, gaussians)
     gaussians.training_setup(opt)
     if checkpoint:

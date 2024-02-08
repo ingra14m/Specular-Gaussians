@@ -50,8 +50,7 @@ class AnchorGaussianModel:
                  voxel_size: float = 0.01,
                  update_depth: int = 3,
                  update_init_factor: int = 100,
-                 update_hierachy_factor: int = 4,
-                 use_feat_bank=False):
+                 update_hierachy_factor: int = 4):
 
         self.feat_dim = feat_dim
         self.n_offsets = n_offsets
