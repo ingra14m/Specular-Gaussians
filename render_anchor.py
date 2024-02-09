@@ -35,6 +35,17 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
 
     t_list = []
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
+        voxel_visible_mask = anchor_prefilter_voxel(view, gaussians, pipeline, background)
+        render_pkg = anchor_render(view, gaussians, pipeline, background, visible_mask=voxel_visible_mask)
+        rendering = render_pkg["render"]
+        gt = view.original_image[0:3, :, :]
+        depth = render_pkg["depth"]
+        depth = depth / (depth.max() + 1e-5)
+        torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
+        torchvision.utils.save_image(gt, os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
+        torchvision.utils.save_image(depth, os.path.join(depth_path, '{0:05d}'.format(idx) + ".png"))
+
+    for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
         torch.cuda.synchronize();
         t0 = time.time()
         voxel_visible_mask = anchor_prefilter_voxel(view, gaussians, pipeline, background)
@@ -43,14 +54,6 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
         t1 = time.time()
 
         t_list.append(t1 - t0)
-
-        rendering = render_pkg["render"]
-        gt = view.original_image[0:3, :, :]
-        depth = render_pkg["depth"]
-        depth = depth / (depth.max() + 1e-5)
-        torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
-        torchvision.utils.save_image(gt, os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
-        torchvision.utils.save_image(depth, os.path.join(depth_path, '{0:05d}'.format(idx) + ".png"))
 
     t = np.array(t_list[5:])
     fps = 1.0 / t.mean()

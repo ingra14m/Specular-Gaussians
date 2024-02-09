@@ -41,6 +41,29 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
     voxel_visible_mask = None
 
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
+
+        if use_filter:
+            voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background)
+        dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
+        dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
+        normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
+        if use_filter:
+            mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask], dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
+        else:
+            mlp_color = specular.step(gaussians.get_asg_features, dir_pp_normalized, normal)
+        results = render(view, gaussians, pipeline, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
+        normal_image = render(view, gaussians, pipeline, background, normal[voxel_visible_mask] * 0.5 + 0.5, hybrid=False, voxel_visible_mask=voxel_visible_mask)["render"]
+        rendering = results["render"]
+        depth = results["depth"]
+        depth = depth / (depth.max() + 1e-5)
+
+        gt = view.original_image[0:3, :, :]
+        torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
+        torchvision.utils.save_image(gt, os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
+        torchvision.utils.save_image(depth, os.path.join(depth_path, '{0:05d}'.format(idx) + ".png"))
+        torchvision.utils.save_image(normal_image, os.path.join(normal_path, '{0:05d}'.format(idx) + ".png"))
+
+    for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
         torch.cuda.synchronize()
         t_start = time.time()
 
@@ -57,18 +80,7 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
         
         torch.cuda.synchronize()
         t_end = time.time()
-
         t_list.append(t_end - t_start)
-        normal_image = render(view, gaussians, pipeline, background, normal[voxel_visible_mask] * 0.5 + 0.5, hybrid=False, voxel_visible_mask=voxel_visible_mask)["render"]
-        rendering = results["render"]
-        depth = results["depth"]
-        depth = depth / (depth.max() + 1e-5)
-
-        gt = view.original_image[0:3, :, :]
-        torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
-        torchvision.utils.save_image(gt, os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
-        torchvision.utils.save_image(depth, os.path.join(depth_path, '{0:05d}'.format(idx) + ".png"))
-        torchvision.utils.save_image(normal_image, os.path.join(normal_path, '{0:05d}'.format(idx) + ".png"))
 
     t = np.array(t_list[5:])
     fps = 1.0 / t.mean()
