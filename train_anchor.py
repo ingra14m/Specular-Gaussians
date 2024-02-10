@@ -252,15 +252,8 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
     name_list = []
     per_view_dict = {}
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
-        torch.cuda.synchronize();
-        t_start = time.time()
-
         voxel_visible_mask = anchor_prefilter_voxel(view, gaussians, pipeline, background)
         render_pkg = anchor_render(view, gaussians, pipeline, background, visible_mask=voxel_visible_mask)
-        torch.cuda.synchronize();
-        t_end = time.time()
-
-        t_list.append(t_end - t_start)
 
         # renders
         rendering = torch.clamp(render_pkg["render"], 0.0, 1.0)
@@ -281,6 +274,17 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
         torchvision.utils.save_image(gt, os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
         torchvision.utils.save_image(depth_rendering, os.path.join(depth_path, '{0:05d}'.format(idx) + ".png"))
         per_view_dict['{0:05d}'.format(idx) + ".png"] = visible_count.item()
+
+    for idx, view in enumerate(tqdm(views, desc="FPS test progress")):
+        torch.cuda.synchronize();
+        t_start = time.time()
+
+        voxel_visible_mask = anchor_prefilter_voxel(view, gaussians, pipeline, background)
+        render_pkg = anchor_render(view, gaussians, pipeline, background, visible_mask=voxel_visible_mask)
+        torch.cuda.synchronize();
+        t_end = time.time()
+
+        t_list.append(t_end - t_start)
 
     with open(os.path.join(model_path, name, "ours_{}".format(iteration), "per_view_count.json"), 'w') as fp:
         json.dump(per_view_dict, fp, indent=True)

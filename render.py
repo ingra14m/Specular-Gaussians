@@ -67,7 +67,7 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
         torchvision.utils.save_image(depth, os.path.join(depth_path, '{0:05d}'.format(idx) + ".png"))
         torchvision.utils.save_image(normal_image, os.path.join(normal_path, '{0:05d}'.format(idx) + ".png"))
 
-    for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
+    for idx, view in enumerate(tqdm(views, desc="FPS test progress")):
         torch.cuda.synchronize()
         t_start = time.time()
 
@@ -138,8 +138,7 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
 
 
 def render_sets(dataset: ModelParams, iteration: int, opt: OptimizationParams, pipeline: PipelineParams,
-                skip_train: bool, skip_test: bool,
-                mode: str):
+                skip_train: bool, skip_test: bool, mode: str):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree, dataset.asg_degree)
         scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
