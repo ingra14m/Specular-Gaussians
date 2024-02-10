@@ -176,7 +176,7 @@ class SpecularNetwork(nn.Module):
         spec = self.render_module(x, view, feature, normal)
 
         return spec
-    
+
 
 class AnchorSpecularNetwork(nn.Module):
     def __init__(self, feature_dims):

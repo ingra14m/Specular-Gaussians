@@ -60,7 +60,8 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
     print(f'Test FPS: \033[1;35m{fps:.5f}\033[0m')
 
 
-def render_sets(dataset: AnchorModelParams, iteration: int, pipeline: PipelineParams, skip_train: bool, skip_test: bool):
+def render_sets(dataset: AnchorModelParams, iteration: int, pipeline: PipelineParams, skip_train: bool,
+                skip_test: bool):
     with torch.no_grad():
         gaussians = AnchorGaussianModel(dataset.feat_dim, dataset.n_offsets, dataset.voxel_size, dataset.update_depth,
                                         dataset.update_init_factor, dataset.update_hierachy_factor)

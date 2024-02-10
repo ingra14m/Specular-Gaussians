@@ -235,16 +235,16 @@ class AnchorGaussianModel:
 
         l = [
             {'params': [self._anchor], 'lr': training_args.position_lr_init * self.spatial_lr_scale,
-                "name": "anchor"},
+             "name": "anchor"},
             {'params': [self._offset], 'lr': training_args.offset_lr_init * self.spatial_lr_scale,
-                "name": "offset"},
+             "name": "offset"},
             {'params': [self._anchor_feat], 'lr': training_args.feature_lr, "name": "anchor_feat"},
             {'params': [self._opacity], 'lr': training_args.opacity_lr, "name": "opacity"},
             {'params': [self._scaling], 'lr': training_args.scaling_lr, "name": "scaling"},
             {'params': [self._rotation], 'lr': training_args.rotation_lr, "name": "rotation"},
 
             {'params': self.mlp_opacity.parameters(), 'lr': training_args.mlp_opacity_lr_init,
-                "name": "mlp_opacity"},
+             "name": "mlp_opacity"},
             {'params': self.mlp_cov.parameters(), 'lr': training_args.mlp_cov_lr_init, "name": "mlp_cov"},
             {'params': self.mlp_color.parameters(), 'lr': training_args.mlp_color_lr_init, "name": "mlp_color"},
         ]

@@ -52,7 +52,7 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = AnchorGaussianModel(dataset.feat_dim, dataset.n_offsets, dataset.voxel_size, dataset.update_depth,
-                              dataset.update_init_factor, dataset.update_hierachy_factor)
+                                    dataset.update_init_factor, dataset.update_hierachy_factor)
     scene = AnchorScene(dataset, gaussians)
     gaussians.training_setup(opt)
     if checkpoint:
@@ -67,7 +67,8 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
     first_iter += 1
     use_c2f = opt.use_c2f
-    smooth_term = get_linear_noise_func(lr_init=opt.c2f_init_factor, lr_final=1.0, lr_delay_mult=0.01, max_steps=opt.c2f_until_iter)
+    smooth_term = get_linear_noise_func(lr_init=opt.c2f_init_factor, lr_final=1.0, lr_delay_mult=0.01,
+                                        max_steps=opt.c2f_until_iter)
     for iteration in range(first_iter, opt.iterations + 1):
 
         iter_start.record()
@@ -90,7 +91,7 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
         retain_grad = (iteration < opt.update_until and iteration >= 0)
         down_sampling = smooth_term(iteration) if use_c2f else 1.0
         render_pkg = anchor_render(viewpoint_cam, gaussians, pipe, background, visible_mask=voxel_visible_mask,
-                            retain_grad=retain_grad, down_sampling=down_sampling)
+                                   retain_grad=retain_grad, down_sampling=down_sampling)
 
         image, viewspace_point_tensor, visibility_filter, offset_selection_mask, radii, scaling, opacity = render_pkg[
             "render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["selection_mask"], \
@@ -98,7 +99,8 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
 
         gt_image = viewpoint_cam.original_image.cuda()
         cur_size = (int(gt_image.shape[1] * down_sampling), int(gt_image.shape[2] * down_sampling))
-        gt_image_cur = F.interpolate(gt_image.unsqueeze(0), size=cur_size, mode='bilinear', align_corners=False).squeeze(0)
+        gt_image_cur = F.interpolate(gt_image.unsqueeze(0), size=cur_size, mode='bilinear',
+                                     align_corners=False).squeeze(0)
         Ll1 = l1_loss(image, gt_image_cur)
         ssim_loss = (1.0 - ssim(image, gt_image_cur))
         scaling_reg = scaling.prod(dim=1).mean()
@@ -173,7 +175,8 @@ def prepare_output_and_logger(args):
     return tb_writer
 
 
-def training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene: AnchorScene,
+def training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations,
+                    scene: AnchorScene,
                     renderFunc, renderArgs, logger=None):
     if tb_writer:
         tb_writer.add_scalar(f'{dataset_name}/train_loss_patches/l1_loss', Ll1.item(), iteration)
@@ -289,7 +292,7 @@ def render_sets(dataset: AnchorModelParams, iteration: int, pipeline: PipelinePa
                 tb_writer=None, dataset_name=None, logger=None):
     with torch.no_grad():
         gaussians = AnchorGaussianModel(dataset.feat_dim, dataset.n_offsets, dataset.voxel_size, dataset.update_depth,
-                                  dataset.update_init_factor, dataset.update_hierachy_factor)
+                                        dataset.update_init_factor, dataset.update_hierachy_factor)
         scene = AnchorScene(dataset, gaussians, load_iteration=iteration, shuffle=False)
         gaussians.eval()
 

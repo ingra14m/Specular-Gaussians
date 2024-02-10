@@ -83,13 +83,15 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
             normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
             if use_filter:
                 mlp_color = specular_mlp.step(gaussians.get_asg_features[voxel_visible_mask],
-                                              dir_pp_normalized[voxel_visible_mask], normal.detach()[voxel_visible_mask])
+                                              dir_pp_normalized[voxel_visible_mask],
+                                              normal.detach()[voxel_visible_mask])
             else:
                 mlp_color = specular_mlp.step(gaussians.get_asg_features, dir_pp_normalized, normal.detach())
         else:
             mlp_color = 0
 
-        render_pkg = render(viewpoint_cam, gaussians, pipe, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
+        render_pkg = render(viewpoint_cam, gaussians, pipe, background, mlp_color,
+                            voxel_visible_mask=voxel_visible_mask)
         image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg[
             "viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
 
@@ -139,7 +141,8 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
 
             # Densification
             if iteration < opt.densify_until_iter:
-                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter, voxel_visible_mask, use_filter)
+                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter, voxel_visible_mask,
+                                                  use_filter)
 
                 if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
                     size_threshold = 20 if iteration > opt.opacity_reset_interval else None
@@ -220,7 +223,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                                                       dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
                     else:
                         mlp_color = specular_mlp.step(scene.gaussians.get_asg_features, dir_pp_normalized, normal)
-                        
+
                     image = torch.clamp(
                         renderFunc(viewpoint, scene.gaussians, *renderArgs, mlp_color,
                                    voxel_visible_mask=voxel_visible_mask)["render"], 0.0, 1.0)
@@ -285,7 +288,8 @@ if __name__ == "__main__":
 
     # rendering
     print(f'\nStarting Rendering~')
-    render_sets(lp.extract(args), -1, op.extract(args), pp.extract(args), skip_train=True, skip_test=False, mode="render")
+    render_sets(lp.extract(args), -1, op.extract(args), pp.extract(args), skip_train=True, skip_test=False,
+                mode="render")
     print("\nRendering complete.")
 
     # calc metrics

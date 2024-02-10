@@ -26,7 +26,8 @@ import numpy as np
 import time
 
 
-def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussians, pipeline, background, specular, use_filter):
+def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussians, pipeline, background, specular,
+               use_filter):
     render_path = os.path.join(model_path, name, "ours_{}".format(iteration), "renders")
     gts_path = os.path.join(model_path, name, "ours_{}".format(iteration), "gt")
     depth_path = os.path.join(model_path, name, "ours_{}".format(iteration), "depth")
@@ -48,11 +49,14 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
         normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
         if use_filter:
-            mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask], dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
+            mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask],
+                                      dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
         else:
             mlp_color = specular.step(gaussians.get_asg_features, dir_pp_normalized, normal)
         results = render(view, gaussians, pipeline, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
-        normal_image = render(view, gaussians, pipeline, background, normal[voxel_visible_mask] * 0.5 + 0.5, hybrid=False, voxel_visible_mask=voxel_visible_mask)["render"]
+        normal_image = \
+        render(view, gaussians, pipeline, background, normal[voxel_visible_mask] * 0.5 + 0.5, hybrid=False,
+               voxel_visible_mask=voxel_visible_mask)["render"]
         rendering = results["render"]
         depth = results["depth"]
         depth = depth / (depth.max() + 1e-5)
@@ -73,11 +77,12 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
         normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
         if use_filter:
-            mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask], dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
+            mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask],
+                                      dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
         else:
             mlp_color = specular.step(gaussians.get_asg_features, dir_pp_normalized, normal)
         results = render(view, gaussians, pipeline, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
-        
+
         torch.cuda.synchronize()
         t_end = time.time()
         t_list.append(t_end - t_start)
@@ -87,7 +92,8 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
     print(f'Test FPS: \033[1;35m{fps:.5f}\033[0m')
 
 
-def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gaussians, pipeline, background, specular, use_filter):
+def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gaussians, pipeline, background, specular,
+                    use_filter):
     render_path = os.path.join(model_path, name, "interpolate_all_{}".format(iteration), "renders")
     depth_path = os.path.join(model_path, name, "interpolate_all_{}".format(iteration), "depth")
 
@@ -104,7 +110,6 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
 
     renderings = []
     for i, pose in enumerate(tqdm(render_poses, desc="Rendering progress")):
-
         matrix = np.linalg.inv(np.array(pose))
         R = -np.transpose(matrix[:3, :3])
         R[:, 0] = -R[:, 0]
@@ -112,7 +117,8 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
 
         view.reset_extrinsic(R, T)
 
-        voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background) if use_filter else torch.ones_like(gaussians.get_xyz)[..., 0].bool()
+        voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background) if use_filter else \
+        torch.ones_like(gaussians.get_xyz)[..., 0].bool()
         dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
         normal, _ = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
@@ -131,7 +137,8 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
     imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=30, quality=8)
 
 
-def render_sets(dataset: ModelParams, iteration: int, opt: OptimizationParams, pipeline: PipelineParams, skip_train: bool, skip_test: bool,
+def render_sets(dataset: ModelParams, iteration: int, opt: OptimizationParams, pipeline: PipelineParams,
+                skip_train: bool, skip_test: bool,
                 mode: str):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree, dataset.asg_degree)
@@ -175,4 +182,5 @@ if __name__ == "__main__":
     # Initialize system state (RNG)
     safe_state(args.quiet)
 
-    render_sets(model.extract(args), args.iteration, op.extract(args), pipeline.extract(args), args.skip_train, args.skip_test, args.mode)
+    render_sets(model.extract(args), args.iteration, op.extract(args), pipeline.extract(args), args.skip_train,
+                args.skip_test, args.mode)
