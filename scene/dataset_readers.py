@@ -262,14 +262,22 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
 
 
 def readNerfSyntheticInfo(path, white_background, eval, extension=".png"):
-    print("Reading Training Transforms")
-    train_cam_infos = readCamerasFromTransforms(path, "transforms_train.json", white_background, extension)
-    print("Reading Test Transforms")
-    test_cam_infos = readCamerasFromTransforms(path, "transforms_test.json", white_background, extension)
+    try:
+        print("Reading Training Transforms")
+        train_cam_infos = readCamerasFromTransforms(path, "transforms_train.json", white_background, extension)
+        print("Reading Test Transforms")
+        test_cam_infos = readCamerasFromTransforms(path, "transforms_test.json", white_background, extension)
 
-    if not eval:
-        train_cam_infos.extend(test_cam_infos)
-        test_cam_infos = []
+        if not eval:
+            train_cam_infos.extend(test_cam_infos)
+            test_cam_infos = []
+    except:
+        print("Reading All Transforms")
+        cam_infos = readCamerasFromTransforms(path, "transforms.json", white_background, extension)
+
+        if eval:
+            train_cam_infos = [c for idx, c in enumerate(cam_infos) if idx % 3 != 0]
+            test_cam_infos = [c for idx, c in enumerate(cam_infos) if idx % 3 == 0]
 
     nerf_normalization = getNerfppNorm(train_cam_infos)
 
