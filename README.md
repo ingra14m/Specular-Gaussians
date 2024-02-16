@@ -1,5 +1,7 @@
 # Spec-Gaussian: Anisotropic View-Dependent Appearance for 3D Gaussian Splatting
 
+## [Project page](https://ingra14m.github.io/Deformable-Gaussians/) | [Paper](https://arxiv.org/abs/2309.13101)
+
 ![teaser](assets/teaser.png)
 
 ## Dataset
@@ -40,6 +42,12 @@ data/
 
 
 
+## Pipeline
+
+![pipeline](assets/pipeline.png)
+
+
+
 ## Run
 
 ### Environment
@@ -61,9 +69,43 @@ pip install -r requirements.txt
 
 
 
-## Pipeline
+### Train
 
-![pipeline](assets/pipeline.png)
+We have provided scripts [`run_anchor.sh`](https://github.com/ingra14m/Spec-Gaussian/blob/main/run_anchor.sh) and [`run_wo_anchor.sh`](https://github.com/ingra14m/Spec-Gaussian/blob/main/run_wo_anchor.sh) that were used to generate the table in the paper. 
+
+In general, using the version without anchor Gaussian can achieve better rendering effects for synthesized bounded scenes. For real-world unbounded scenes, using the version with anchor Gaussian can achieve better results. For researchers who want to explore the use of with anchor Gaussian in bounded scenes and without anchor Gaussian in unbounded scenes, we have provided the following general training command.
+
+**Train without anchor**
+
+```shell
+python train.py -s your/path/to/the/dataset -m your/path/to/save --eval
+
+## For synthetic bounded scenes
+python train.py -s data/nerf_synthetic/drums -m outputs/nerf/drums --eval
+
+## For real-world unbounded scenes
+python train.py -s data/mipnerf-360/bonsai -m outputs/mip360/bonsai --eval --use_filter
+```
+
+
+
+**Train with anchor**
+
+```shell
+python train_anchor.py -s your/path/to/the/dataset -m your/path/to/save --eval
+
+## For synthetic bounded scenes
+python train_anchor.py -s data/nerf_synthetic/drums -m outputs/nerf/drums --eval --voxel_size 0.001 --update_init_factor 4 --iterations 30_000
+
+## For mip360 scenes
+python train_anchor.py -s data/mipnerf-360/bonsai -m outputs/mip360/bonsai --eval --voxel_size 0.001 --update_init_factor 16 --iterations 30_000
+
+## For tandt scenes
+python train_anchor.py -s data/tandt_db/tandt/train -m outputs/tandt/train --eval --voxel_size 0.01 --update_init_factor 16 --iterations 30_000
+
+## For deep blending scenes
+python train_anchor.py -s data/tandt_db/db/drjohnson -m outputs/db/drjohnson --eval --voxel_size 0.005 --update_init_factor 16 --iterations 30_000 --use_c2f
+```
 
 
 
