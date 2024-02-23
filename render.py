@@ -120,7 +120,7 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
             torch.ones_like(gaussians.get_xyz)[..., 0].bool()
         dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-        normal, _ = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
+        normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
         mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask], dir_pp_normalized[voxel_visible_mask],
                                   normal[voxel_visible_mask])
         results = render(view, gaussians, pipeline, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
@@ -133,7 +133,7 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
         # torchvision.utils.save_image(depth, os.path.join(depth_path, '{0:05d}'.format(i) + ".png"))
 
     renderings = np.stack(renderings, 0).transpose(0, 2, 3, 1)
-    imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=30, quality=8)
+    imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=60, quality=8)
 
 
 def render_sets(dataset: ModelParams, iteration: int, opt: OptimizationParams, pipeline: PipelineParams,
