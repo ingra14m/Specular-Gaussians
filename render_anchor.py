@@ -84,6 +84,42 @@ def render_video(model_path, iteration, views, gaussians, pipeline, background):
     imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=60, quality=8)
 
 
+def interpolate_all(model_path, iteration, views, gaussians, pipeline, background):
+    render_path = os.path.join(model_path, "interpolate_all_{}".format(iteration), "renders")
+    depth_path = os.path.join(model_path, "interpolate_all_{}".format(iteration), "depth")
+
+    os.makedirs(render_path, exist_ok=True)
+    os.makedirs(depth_path, exist_ok=True)
+
+    frame = 520
+    render_poses = torch.stack([pose_spherical(angle, -30.0, 4) for angle in np.linspace(-180, 180, frame + 1)[:-1]], 0)
+    to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
+
+    idx = torch.randint(0, len(views), (1,)).item()
+    view = views[idx]  # Choose a specific time for rendering
+
+    renderings = []
+    for i, pose in enumerate(tqdm(render_poses, desc="Rendering progress")):
+        matrix = np.linalg.inv(np.array(pose))
+        R = -np.transpose(matrix[:3, :3])
+        R[:, 0] = -R[:, 0]
+        T = -matrix[:3, 3]
+
+        view.reset_extrinsic(R, T)
+
+        voxel_visible_mask = anchor_prefilter_voxel(view, gaussians, pipeline, background)
+        rendering = anchor_render(view, gaussians, pipeline, background, visible_mask=voxel_visible_mask)["render"]
+        renderings.append(to8b(rendering.cpu().numpy()))
+        # depth = results["depth"]
+        # depth = depth / (depth.max() + 1e-5)
+
+        # torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(i) + ".png"))
+        # torchvision.utils.save_image(depth, os.path.join(depth_path, '{0:05d}'.format(i) + ".png"))
+
+    renderings = np.stack(renderings, 0).transpose(0, 2, 3, 1)
+    imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=60, quality=8)
+
+
 def render_sets(dataset: AnchorModelParams, iteration: int, pipeline: PipelineParams, skip_train: bool,
                 skip_test: bool, mode: str):
     with torch.no_grad():
@@ -99,6 +135,9 @@ def render_sets(dataset: AnchorModelParams, iteration: int, pipeline: PipelinePa
         if mode == "real-360":
             render_video(dataset.model_path, scene.loaded_iter, scene.getTrainCameras(), gaussians, pipeline,
                          background)
+        elif mode == "syn-360":
+            interpolate_all(dataset.model_path, scene.loaded_iter, scene.getTrainCameras(), gaussians, pipeline,
+                            background)
         else:
             if not skip_train:
                 render_set(dataset.model_path, "train", scene.loaded_iter, scene.getTrainCameras(), gaussians, pipeline,

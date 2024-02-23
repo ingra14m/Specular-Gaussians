@@ -17,7 +17,7 @@ from os import makedirs
 from gaussian_renderer import render, prefilter_voxel
 import torchvision
 from utils.general_utils import safe_state
-from utils.pose_utils import pose_spherical, generate_ellipse_path
+from utils.pose_utils import pose_spherical
 from argparse import ArgumentParser
 from arguments import ModelParams, PipelineParams, OptimizationParams, get_combined_args
 from gaussian_renderer import GaussianModel
@@ -101,8 +101,7 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
     makedirs(depth_path, exist_ok=True)
 
     frame = 520
-    render_poses = torch.stack([pose_spherical(angle, -30.0, 4.0) for angle in np.linspace(-180, 180, frame + 1)[:-1]],
-                               0)
+    render_poses = torch.stack([pose_spherical(angle, -30.0, 4) for angle in np.linspace(-180, 180, frame + 1)[:-1]], 0)
     to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
 
     idx = torch.randint(0, len(views), (1,)).item()
@@ -127,8 +126,8 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
         results = render(view, gaussians, pipeline, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
         rendering = results["render"]
         renderings.append(to8b(rendering.cpu().numpy()))
-        depth = results["depth"]
-        depth = depth / (depth.max() + 1e-5)
+        # depth = results["depth"]
+        # depth = depth / (depth.max() + 1e-5)
 
         # torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(i) + ".png"))
         # torchvision.utils.save_image(depth, os.path.join(depth_path, '{0:05d}'.format(i) + ".png"))
