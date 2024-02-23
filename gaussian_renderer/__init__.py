@@ -39,7 +39,8 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
     """
 
     # Create zero tensor. We will use it to make pytorch return gradients of the 2D (screen-space) means
-    screenspace_points = torch.zeros_like(pc.get_xyz if voxel_visible_mask is None else pc.get_xyz[voxel_visible_mask], dtype=pc.get_xyz.dtype, requires_grad=True, device="cuda") + 0
+    screenspace_points = torch.zeros_like(pc.get_xyz if voxel_visible_mask is None else pc.get_xyz[voxel_visible_mask],
+                                          dtype=pc.get_xyz.dtype, requires_grad=True, device="cuda") + 0
     try:
         screenspace_points.retain_grad()
     except:
@@ -94,7 +95,9 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
             shs_view = pc.get_features.transpose(1, 2).view(-1, 3, (pc.max_sh_degree + 1) ** 2)
             dir_pp = (means3D - viewpoint_camera.camera_center.repeat(means3D.shape[0], 1))
             dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
-            sh2rgb = eval_sh(pc.active_sh_degree, shs_view if voxel_visible_mask is None else shs_view[voxel_visible_mask], dir_pp_normalized)
+            sh2rgb = eval_sh(pc.active_sh_degree,
+                             shs_view if voxel_visible_mask is None else shs_view[voxel_visible_mask],
+                             dir_pp_normalized)
             colors_precomp = torch.clamp_min(sh2rgb + 0.5, 0.0) + mlp_color
         else:
             # shs = pc.get_features
@@ -256,8 +259,9 @@ def generate_neural_gaussians(viewpoint_camera, pc: AnchorGaussianModel, visible
         return xyz, color, opacity, scaling, rot
 
 
-def anchor_render(viewpoint_camera, pc: AnchorGaussianModel, pipe, bg_color: torch.Tensor, scaling_modifier=1.0, visible_mask=None,
-           retain_grad=False, down_sampling=1):
+def anchor_render(viewpoint_camera, pc: AnchorGaussianModel, pipe, bg_color: torch.Tensor, scaling_modifier=1.0,
+                  visible_mask=None,
+                  retain_grad=False, down_sampling=1):
     """
     Render the scene. 
     
@@ -333,8 +337,9 @@ def anchor_render(viewpoint_camera, pc: AnchorGaussianModel, pipe, bg_color: tor
                 }
 
 
-def anchor_prefilter_voxel(viewpoint_camera, pc: AnchorGaussianModel, pipe, bg_color: torch.Tensor, scaling_modifier=1.0,
-                    override_color=None):
+def anchor_prefilter_voxel(viewpoint_camera, pc: AnchorGaussianModel, pipe, bg_color: torch.Tensor,
+                           scaling_modifier=1.0,
+                           override_color=None):
     """
     Render the scene. 
     

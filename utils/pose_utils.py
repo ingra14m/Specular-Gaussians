@@ -121,6 +121,7 @@ def integrate_weights_np(w):
                           np.ones(shape)], axis=-1)
     return cw0
 
+
 def invert_cdf_np(u, t, w_logits):
     """Invert the CDF defined by (t, w) at the points specified by u in [0, 1)."""
     # Compute the PDF and CDF for each weight vector.
@@ -244,10 +245,9 @@ def generate_ellipse_path(views, n_frames=600, const_speed=True, z_variation=0.,
     poses = np.stack(poses, 0)
     poses, transform = transform_poses_pca(poses)
 
-
     # Calculate the focal point for the path (cameras point toward this).
     center = focus_point_fn(poses)
-    offset = np.array([center[0] , center[1],  center[2]*0 ])
+    offset = np.array([center[0], center[1], center[2] * 0])
     # Calculate scaling for ellipse axes based on input camera positions.
     sc = np.percentile(np.abs(poses[:, :3, 3] - offset), 90, axis=0)
 
@@ -257,7 +257,6 @@ def generate_ellipse_path(views, n_frames=600, const_speed=True, z_variation=0.,
     # Optional height variation need not be symmetric
     z_low = np.percentile((poses[:, :3, 3]), 10, axis=0)
     z_high = np.percentile((poses[:, :3, 3]), 90, axis=0)
-
 
     def get_positions(theta):
         # Interpolate between bounds with trig functions to get ellipse in x-y.

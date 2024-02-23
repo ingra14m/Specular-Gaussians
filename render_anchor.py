@@ -69,14 +69,16 @@ def render_video(model_path, iteration, views, gaussians, pipeline, background):
     to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
     view = views[0]
     renderings = []
-    for idx, pose in enumerate(tqdm(generate_ellipse_path(views,n_frames=600), desc="Rendering progress")):
-        view.world_view_transform = torch.tensor(getWorld2View2(pose[:3, :3].T, pose[:3, 3], view.trans, view.scale)).transpose(0, 1).cuda()
-        view.full_proj_transform = (view.world_view_transform.unsqueeze(0).bmm(view.projection_matrix.unsqueeze(0))).squeeze(0)
+    for idx, pose in enumerate(tqdm(generate_ellipse_path(views, n_frames=600), desc="Rendering progress")):
+        view.world_view_transform = torch.tensor(
+            getWorld2View2(pose[:3, :3].T, pose[:3, 3], view.trans, view.scale)).transpose(0, 1).cuda()
+        view.full_proj_transform = (
+            view.world_view_transform.unsqueeze(0).bmm(view.projection_matrix.unsqueeze(0))).squeeze(0)
         view.camera_center = view.world_view_transform.inverse()[3, :3]
         voxel_visible_mask = anchor_prefilter_voxel(view, gaussians, pipeline, background)
         rendering = anchor_render(view, gaussians, pipeline, background, visible_mask=voxel_visible_mask)["render"]
         renderings.append(to8b(rendering.cpu().numpy()))
-        #torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
+        # torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
 
     renderings = np.stack(renderings, 0).transpose(0, 2, 3, 1)
     imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=60, quality=8)
@@ -95,14 +97,15 @@ def render_sets(dataset: AnchorModelParams, iteration: int, pipeline: PipelinePa
         background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
 
         if mode == "real-360":
-            render_video(dataset.model_path, scene.loaded_iter, scene.getTrainCameras(), gaussians, pipeline, background)
+            render_video(dataset.model_path, scene.loaded_iter, scene.getTrainCameras(), gaussians, pipeline,
+                         background)
         else:
             if not skip_train:
                 render_set(dataset.model_path, "train", scene.loaded_iter, scene.getTrainCameras(), gaussians, pipeline,
-                       background)
+                           background)
             if not skip_test:
                 render_set(dataset.model_path, "test", scene.loaded_iter, scene.getTestCameras(), gaussians, pipeline,
-                       background)
+                           background)
 
 
 if __name__ == "__main__":
@@ -121,4 +124,4 @@ if __name__ == "__main__":
     # Initialize system state (RNG)
     safe_state(args.quiet)
 
-    render_sets(model.extract(args), args.iteration, pipeline.extract(args), args.skip_train, args.skip_testi, args.mode)
+    render_sets(model.extract(args), args.iteration, pipeline.extract(args), args.skip_train, args.skip_test, args.mode)

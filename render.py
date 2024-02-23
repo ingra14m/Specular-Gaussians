@@ -17,7 +17,7 @@ from os import makedirs
 from gaussian_renderer import render, prefilter_voxel
 import torchvision
 from utils.general_utils import safe_state
-from utils.pose_utils import pose_spherical, render_wander_path
+from utils.pose_utils import pose_spherical, generate_ellipse_path
 from argparse import ArgumentParser
 from arguments import ModelParams, PipelineParams, OptimizationParams, get_combined_args
 from gaussian_renderer import GaussianModel
@@ -55,8 +55,8 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
             mlp_color = specular.step(gaussians.get_asg_features, dir_pp_normalized, normal)
         results = render(view, gaussians, pipeline, background, mlp_color, voxel_visible_mask=voxel_visible_mask)
         normal_image = \
-        render(view, gaussians, pipeline, background, normal[voxel_visible_mask] * 0.5 + 0.5, hybrid=False,
-               voxel_visible_mask=voxel_visible_mask)["render"]
+            render(view, gaussians, pipeline, background, normal[voxel_visible_mask] * 0.5 + 0.5, hybrid=False,
+                   voxel_visible_mask=voxel_visible_mask)["render"]
         rendering = results["render"]
         depth = results["depth"]
         depth = depth / (depth.max() + 1e-5)
@@ -118,7 +118,7 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
         view.reset_extrinsic(R, T)
 
         voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background) if use_filter else \
-        torch.ones_like(gaussians.get_xyz)[..., 0].bool()
+            torch.ones_like(gaussians.get_xyz)[..., 0].bool()
         dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
         dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
         normal, _ = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
