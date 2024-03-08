@@ -1,6 +1,6 @@
 # Spec-Gaussian: Anisotropic View-Dependent Appearance for 3D Gaussian Splatting
 
-## [Project page](https://ingra14m.github.io/Deformable-Gaussians/) | [Paper](https://arxiv.org/abs/2309.13101)
+## [Project page](https://ingra14m.github.io/Spec-Gaussian-website/) | [Paper](https://arxiv.org/abs/2402.15870)
 
 ![teaser](assets/teaser.png)
 
@@ -124,7 +124,12 @@ python train_anchor.py -s data/tandt_db/db/drjohnson -m outputs/db/drjohnson --e
 ## BibTex
 
 ```shell
-
+@article{yang2024spec,
+  title={Spec-Gaussian: Anisotropic View-Dependent Appearance for 3D Gaussian Splatting},
+  author={Yang, Ziyi and Gao, Xinyu and Sun, Yangtian and Huang, Yihua and Lyu, Xiaoyang and Zhou, Wen and Jiao, Shaohui and Qi, Xiaojuan and Jin, Xiaogang},
+  journal={arXiv preprint arXiv:2402.15870},
+  year={2024}
+}
 ```
 
 And thanks to the authors of [3D Gaussians](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/) and [Scaffold-GS](https://github.com/city-super/Scaffold-GS) for their excellent code, please consider citing these repositories.
