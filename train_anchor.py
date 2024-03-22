@@ -184,7 +184,7 @@ def training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, elap
         tb_writer.add_scalar(f'{dataset_name}/iter_time', elapsed, iteration)
 
     # Report test and samples of training set
-    if iteration in testing_iterations:
+    if iteration in testing_iterations[:-1]:
         scene.gaussians.eval()
         torch.cuda.empty_cache()
         validation_configs = ({'name': 'test', 'cameras': scene.getTestCameras()},
@@ -231,6 +231,52 @@ def training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, elap
             tb_writer.add_histogram(f'{dataset_name}/' + "scene/opacity_histogram", scene.gaussians.get_opacity,
                                     iteration)
             tb_writer.add_scalar(f'{dataset_name}/' + 'total_points', scene.gaussians.get_anchor.shape[0], iteration)
+
+        torch.cuda.empty_cache()
+
+        scene.gaussians.train()
+
+    elif iteration == testing_iterations[-1]:
+        scene.gaussians.eval()
+        torch.cuda.empty_cache()
+        config = {'name': 'test', 'cameras': scene.getTestCameras()}
+
+        if config['cameras'] and len(config['cameras']) > 0:
+            l1_test = 0.0
+            psnr_test = 0.0
+            ssim_test = 0.0
+            lpips_test = 0.0
+
+            for idx, viewpoint in enumerate(config['cameras']):
+                voxel_visible_mask = anchor_prefilter_voxel(viewpoint, scene.gaussians, *renderArgs)
+                image = torch.clamp(
+                    renderFunc(viewpoint, scene.gaussians, *renderArgs, visible_mask=voxel_visible_mask)["render"],
+                    0.0, 1.0)
+                gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
+                if tb_writer and (idx < 30):
+                    tb_writer.add_images(
+                        f'{dataset_name}/' + config['name'] + "_view_{}/render".format(viewpoint.image_name),
+                        image[None], global_step=iteration)
+                    tb_writer.add_images(
+                        f'{dataset_name}/' + config['name'] + "_view_{}/errormap".format(viewpoint.image_name),
+                        (gt_image[None] - image[None]).abs(), global_step=iteration)
+
+                    if iteration == testing_iterations[0]:
+                        tb_writer.add_images(f'{dataset_name}/' + config['name'] + "_view_{}/ground_truth".format(
+                            viewpoint.image_name), gt_image[None], global_step=iteration)
+
+                l1_test += l1_loss(image, gt_image).mean().double()
+                psnr_test += psnr(image, gt_image).mean().double()
+                ssim_test += ssim(image, gt_image).mean().double()
+                lpips_test += lpips_fn(image, gt_image).mean().double()
+
+            psnr_test /= len(config['cameras'])
+            l1_test /= len(config['cameras'])
+            ssim_test /= len(config['cameras'])
+            lpips_test /= len(config['cameras'])
+            logger.info(
+                "\n[ITER {}] Evaluating {}: L1 {} PSNR {} SSIM {} LPIPS {}".format(iteration, config['name'], l1_test, psnr_test, ssim_test, lpips_test))
+
         torch.cuda.empty_cache()
 
         scene.gaussians.train()
@@ -320,7 +366,7 @@ def render_sets(dataset: AnchorModelParams, iteration: int, pipeline: PipelinePa
     return visible_count
 
 
-def evaluate(model_paths, visible_count=None, tb_writer=None, dataset_name=None, logger=None):
+def evaluate(model_paths, tb_writer=None, dataset_name=None, logger=None):
     full_dict = {}
     per_view_dict = {}
     full_dict_polytopeonly = {}
@@ -367,16 +413,13 @@ def evaluate(model_paths, visible_count=None, tb_writer=None, dataset_name=None,
             tb_writer.add_scalar(f'{dataset_name}/PSNR', torch.tensor(psnrs).mean().item(), 0)
             tb_writer.add_scalar(f'{dataset_name}/LPIPS', torch.tensor(lpipss).mean().item(), 0)
 
-            tb_writer.add_scalar(f'{dataset_name}/VISIBLE_NUMS', torch.tensor(visible_count).mean().item(), 0)
-
         full_dict[scene_dir][method].update({"SSIM": torch.tensor(ssims).mean().item(),
                                              "PSNR": torch.tensor(psnrs).mean().item(),
                                              "LPIPS": torch.tensor(lpipss).mean().item()})
         per_view_dict[scene_dir][method].update(
             {"SSIM": {name: ssim for ssim, name in zip(torch.tensor(ssims).tolist(), image_names)},
              "PSNR": {name: psnr for psnr, name in zip(torch.tensor(psnrs).tolist(), image_names)},
-             "LPIPS": {name: lp for lp, name in zip(torch.tensor(lpipss).tolist(), image_names)},
-             "VISIBLE_COUNT": {name: vc for vc, name in zip(torch.tensor(visible_count).tolist(), image_names)}})
+             "LPIPS": {name: lp for lp, name in zip(torch.tensor(lpipss).tolist(), image_names)}})
 
     with open(scene_dir + "/results.json", 'w') as fp:
         json.dump(full_dict[scene_dir], fp, indent=True)
@@ -456,6 +499,6 @@ if __name__ == "__main__":
     logger.info("\nRendering complete.")
 
     # calc metrics
-    logger.info("\nStarting evaluation...")
-    evaluate(args.model_path, visible_count=visible_count, logger=logger)
-    logger.info("\nEvaluating complete.")
+    # logger.info("\nStarting evaluation...")
+    # # evaluate(args.model_path, logger=logger)
+    # logger.info("\nEvaluating complete.")
