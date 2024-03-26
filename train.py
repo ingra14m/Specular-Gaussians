@@ -25,6 +25,7 @@ from argparse import ArgumentParser, Namespace
 from arguments import ModelParams, PipelineParams, OptimizationParams
 from render import render_sets
 from metrics import evaluate
+import lpips
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -53,6 +54,8 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
     ema_loss_for_log = 0.0
     best_psnr = 0.0
     best_iteration = 0
+    last_ssim = 0
+    last_lpips = 0
     use_filter = opt.use_filter
     progress_bar = tqdm(range(opt.iterations), desc="Training progress")
     voxel_visible_mask = None
@@ -129,9 +132,14 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
             cur_psnr = training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
                                        testing_iterations, scene, render, (pipe, background), specular_mlp,
                                        dataset.load2gpu_on_the_fly, use_filter)
+            
             if iteration in testing_iterations:
-                if cur_psnr.item() > best_psnr:
-                    best_psnr = cur_psnr.item()
+                if iteration == testing_iterations[-1]:
+                    cur_psnr, last_ssim, last_lpips = test_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
+                                               testing_iterations, scene, render, (pipe, background), specular_mlp,
+                                               dataset.load2gpu_on_the_fly, use_filter)
+                if cur_psnr > best_psnr:
+                    best_psnr = cur_psnr
                     best_iteration = iteration
 
             if iteration in saving_iterations:
@@ -161,7 +169,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
                 specular_mlp.optimizer.zero_grad()
                 specular_mlp.update_learning_rate(iteration)
 
-    print("Best PSNR = {} in Iteration {}".format(best_psnr, best_iteration))
+    print("Best PSNR = {} in Iteration {}, SSIM = {}, LPIPS = {}".format(best_psnr, best_iteration, last_ssim, last_lpips))
 
 
 def prepare_output_and_logger(args):
@@ -187,6 +195,79 @@ def prepare_output_and_logger(args):
     return tb_writer
 
 
+def test_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene: Scene, renderFunc,
+                renderArgs, specular_mlp, load2gpu_on_the_fly, use_filter):
+    if tb_writer:
+        tb_writer.add_scalar('train_loss_patches/l1_loss', Ll1.item(), iteration)
+        tb_writer.add_scalar('train_loss_patches/total_loss', loss.item(), iteration)
+        tb_writer.add_scalar('iter_time', elapsed, iteration)
+
+    l1_test = 0.0
+    psnr_test = 0.0
+    ssim_test = 0.0
+    lpips_test = 0.0
+    voxel_visible_mask = None
+    lpips_fn = lpips.LPIPS(net='vgg').to('cuda')
+    # Report test and samples of training set
+    if iteration in testing_iterations:
+        torch.cuda.empty_cache()
+        config = {'name': 'test', 'cameras': scene.getTestCameras()}
+
+        if config['cameras'] and len(config['cameras']) > 0:
+            images = torch.tensor([], device="cuda")
+            gts = torch.tensor([], device="cuda")
+            for idx, viewpoint in enumerate(config['cameras']):
+                if load2gpu_on_the_fly:
+                    viewpoint.load2device()
+
+                if use_filter:
+                    voxel_visible_mask = prefilter_voxel(viewpoint, scene.gaussians, *renderArgs)
+                dir_pp = (scene.gaussians.get_xyz - viewpoint.camera_center.repeat(
+                    scene.gaussians.get_features.shape[0], 1))
+                dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
+                normal = scene.gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
+                if use_filter:
+                    mlp_color = specular_mlp.step(scene.gaussians.get_asg_features[voxel_visible_mask],
+                                                    dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
+                else:
+                    mlp_color = specular_mlp.step(scene.gaussians.get_asg_features, dir_pp_normalized, normal)
+
+                image = torch.clamp(
+                    renderFunc(viewpoint, scene.gaussians, *renderArgs, mlp_color,
+                                voxel_visible_mask=voxel_visible_mask)["render"], 0.0, 1.0)
+                gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
+
+                l1_test += l1_loss(image, gt_image).mean().double()
+                psnr_test += psnr(image, gt_image).mean().double()
+                ssim_test += ssim(image, gt_image).mean().double()
+                lpips_test += lpips_fn(image, gt_image).mean().double()
+
+                if load2gpu_on_the_fly:
+                    viewpoint.load2device('cpu')
+                if tb_writer and (idx < 5):
+                    tb_writer.add_images(config['name'] + "_view_{}/render".format(viewpoint.image_name),
+                                            image[None], global_step=iteration)
+                    if iteration == testing_iterations[0]:
+                        tb_writer.add_images(config['name'] + "_view_{}/ground_truth".format(viewpoint.image_name),
+                                                gt_image[None], global_step=iteration)
+
+            l1_test /= len(config['cameras'])
+            psnr_test /= len(config['cameras'])
+            ssim_test /= len(config['cameras'])
+            lpips_test /= len(config['cameras'])
+
+            print("\n[ITER {}] Evaluating {}: L1 {} PSNR {}".format(iteration, config['name'], l1_test, psnr_test))
+            if tb_writer:
+                tb_writer.add_scalar(config['name'] + '/loss_viewpoint - l1_loss', l1_test, iteration)
+                tb_writer.add_scalar(config['name'] + '/loss_viewpoint - psnr', psnr_test, iteration)
+
+        if tb_writer:
+            tb_writer.add_histogram("scene/opacity_histogram", scene.gaussians.get_opacity, iteration)
+            tb_writer.add_scalar('total_points', scene.gaussians.get_xyz.shape[0], iteration)
+        torch.cuda.empty_cache()
+
+    return psnr_test, ssim_test, lpips_test
+
 def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene: Scene, renderFunc,
                     renderArgs, specular_mlp, load2gpu_on_the_fly, use_filter):
     if tb_writer:
@@ -197,7 +278,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
     test_psnr = 0.0
     voxel_visible_mask = None
     # Report test and samples of training set
-    if iteration in testing_iterations:
+    if iteration in testing_iterations[:-1]:
         torch.cuda.empty_cache()
         validation_configs = ({'name': 'test', 'cameras': scene.getTestCameras()},
                               {'name': 'train',
@@ -267,8 +348,8 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=6009)
     parser.add_argument('--detect_anomaly', action='store_true', default=False)
     parser.add_argument("--test_iterations", nargs="+", type=int,
-                        default=[5000, 6000, 7_000] + list(range(10000, 40001, 1000)))
-    parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 10_000, 20_000, 30_000, 40000])
+                        default=[7_000] + list(range(20000, 30001, 1000)))
+    parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 30_000])
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
@@ -293,6 +374,6 @@ if __name__ == "__main__":
     print("\nRendering complete.")
 
     # calc metrics
-    print("\nStarting evaluation...")
-    evaluate([str(args.model_path)])
-    print("\nEvaluating complete.")
+    #print("\nStarting evaluation...")
+    #evaluate([str(args.model_path)])
+    #print("\nEvaluating complete.")

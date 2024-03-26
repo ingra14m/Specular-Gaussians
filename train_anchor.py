@@ -35,8 +35,6 @@ from argparse import ArgumentParser, Namespace
 from arguments import AnchorModelParams, PipelineParams, AnchorOptimizationParams
 import torch.nn.functional as F
 
-lpips_fn = lpips.LPIPS(net='vgg').to('cuda')
-
 try:
     from torch.utils.tensorboard import SummaryWriter
 
@@ -239,6 +237,7 @@ def training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, elap
     elif iteration == testing_iterations[-1]:
         scene.gaussians.eval()
         torch.cuda.empty_cache()
+        lpips_fn = lpips.LPIPS(net='vgg').to('cuda')
         config = {'name': 'test', 'cameras': scene.getTestCameras()}
 
         if config['cameras'] and len(config['cameras']) > 0:
