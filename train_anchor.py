@@ -274,7 +274,8 @@ def training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, elap
             ssim_test /= len(config['cameras'])
             lpips_test /= len(config['cameras'])
             logger.info(
-                "\n[ITER {}] Evaluating {}: L1 {} PSNR {} SSIM {} LPIPS {}".format(iteration, config['name'], l1_test, psnr_test, ssim_test, lpips_test))
+                "\n[ITER {}] Evaluating {}: L1 {} PSNR {} SSIM {} LPIPS {}".format(iteration, config['name'], l1_test,
+                                                                                   psnr_test, ssim_test, lpips_test))
 
         torch.cuda.empty_cache()
 

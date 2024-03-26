@@ -132,12 +132,14 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
             cur_psnr = training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
                                        testing_iterations, scene, render, (pipe, background), specular_mlp,
                                        dataset.load2gpu_on_the_fly, use_filter)
-            
+
             if iteration in testing_iterations:
                 if iteration == testing_iterations[-1]:
-                    cur_psnr, last_ssim, last_lpips = test_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
-                                               testing_iterations, scene, render, (pipe, background), specular_mlp,
-                                               dataset.load2gpu_on_the_fly, use_filter)
+                    cur_psnr, last_ssim, last_lpips = test_report(tb_writer, iteration, Ll1, loss, l1_loss,
+                                                                  iter_start.elapsed_time(iter_end),
+                                                                  testing_iterations, scene, render, (pipe, background),
+                                                                  specular_mlp,
+                                                                  dataset.load2gpu_on_the_fly, use_filter)
                 if cur_psnr > best_psnr:
                     best_psnr = cur_psnr
                     best_iteration = iteration
@@ -169,7 +171,8 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
                 specular_mlp.optimizer.zero_grad()
                 specular_mlp.update_learning_rate(iteration)
 
-    print("Best PSNR = {} in Iteration {}, SSIM = {}, LPIPS = {}".format(best_psnr, best_iteration, last_ssim, last_lpips))
+    print("Best PSNR = {} in Iteration {}, SSIM = {}, LPIPS = {}".format(best_psnr, best_iteration, last_ssim,
+                                                                         last_lpips))
 
 
 def prepare_output_and_logger(args):
@@ -228,13 +231,13 @@ def test_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_itera
                 normal = scene.gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
                 if use_filter:
                     mlp_color = specular_mlp.step(scene.gaussians.get_asg_features[voxel_visible_mask],
-                                                    dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
+                                                  dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
                 else:
                     mlp_color = specular_mlp.step(scene.gaussians.get_asg_features, dir_pp_normalized, normal)
 
                 image = torch.clamp(
                     renderFunc(viewpoint, scene.gaussians, *renderArgs, mlp_color,
-                                voxel_visible_mask=voxel_visible_mask)["render"], 0.0, 1.0)
+                               voxel_visible_mask=voxel_visible_mask)["render"], 0.0, 1.0)
                 gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
 
                 l1_test += l1_loss(image, gt_image).mean().double()
@@ -246,10 +249,10 @@ def test_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_itera
                     viewpoint.load2device('cpu')
                 if tb_writer and (idx < 5):
                     tb_writer.add_images(config['name'] + "_view_{}/render".format(viewpoint.image_name),
-                                            image[None], global_step=iteration)
+                                         image[None], global_step=iteration)
                     if iteration == testing_iterations[0]:
                         tb_writer.add_images(config['name'] + "_view_{}/ground_truth".format(viewpoint.image_name),
-                                                gt_image[None], global_step=iteration)
+                                             gt_image[None], global_step=iteration)
 
             l1_test /= len(config['cameras'])
             psnr_test /= len(config['cameras'])
@@ -267,6 +270,7 @@ def test_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_itera
         torch.cuda.empty_cache()
 
     return psnr_test, ssim_test, lpips_test
+
 
 def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene: Scene, renderFunc,
                     renderArgs, specular_mlp, load2gpu_on_the_fly, use_filter):
@@ -374,6 +378,6 @@ if __name__ == "__main__":
     print("\nRendering complete.")
 
     # calc metrics
-    #print("\nStarting evaluation...")
-    #evaluate([str(args.model_path)])
-    #print("\nEvaluating complete.")
+    # print("\nStarting evaluation...")
+    # evaluate([str(args.model_path)])
+    # print("\nEvaluating complete.")
