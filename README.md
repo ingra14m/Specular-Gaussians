@@ -4,6 +4,8 @@
 
 ![teaser](assets/teaser.png)
 
+This project was built on my previous released [My-exp-Gaussian](https://github.com/ingra14m/My-exp-Gaussian), aiming to enhance 3D Gaussian Splatting in modeling scenes with specular highlights. This work was rejected due to minor improvements and a decrease in rendering speed. But I still hope this work can assist researchers who need to model specular highlights through splatting.
+
 ## Dataset
 
 In our paper, we use:
@@ -120,6 +122,8 @@ python train_anchor.py -s data/tandt_db/db/drjohnson -m outputs/db/drjohnson --e
 ### Real-world Scenes
 
 ![real](assets/real.png)
+
+
 
 ## BibTex
 
