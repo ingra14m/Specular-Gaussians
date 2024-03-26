@@ -125,6 +125,12 @@ python train_anchor.py -s data/tandt_db/db/drjohnson -m outputs/db/drjohnson --e
 
 
 
+## Acknowledgments
+
+This work was mainly supported by ByteDance MMLab. I'm very grateful for the help from Chao Wan of Cornell University during the rebuttal.
+
+
+
 ## BibTex
 
 ```shell
