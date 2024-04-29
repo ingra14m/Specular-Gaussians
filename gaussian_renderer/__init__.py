@@ -41,8 +41,11 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
     # Create zero tensor. We will use it to make pytorch return gradients of the 2D (screen-space) means
     screenspace_points = torch.zeros_like(pc.get_xyz if voxel_visible_mask is None else pc.get_xyz[voxel_visible_mask],
                                           dtype=pc.get_xyz.dtype, requires_grad=True, device="cuda") + 0
+    screenspace_points_densify = torch.zeros_like(pc.get_xyz if voxel_visible_mask is None else pc.get_xyz[voxel_visible_mask],
+                                          dtype=pc.get_xyz.dtype, requires_grad=True, device="cuda") + 0
     try:
         screenspace_points.retain_grad()
+        screenspace_points_densify.retain_grad()
     except:
         pass
 
@@ -67,7 +70,6 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
 
     rasterizer = GaussianRasterizer(raster_settings=raster_settings)
 
-    means2D = screenspace_points
     if voxel_visible_mask is None:
         means3D = pc.get_xyz
         opacity = pc.get_opacity
@@ -108,7 +110,8 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
     # Rasterize visible Gaussians to image, obtain their radii (on screen). 
     rendered_image, radii, depth = rasterizer(
         means3D=means3D,
-        means2D=means2D,
+        means2D=screenspace_points,
+        means2D_densify=screenspace_points_densify,
         shs=None,
         colors_precomp=colors_precomp,
         opacities=opacity,
@@ -120,6 +123,7 @@ def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, ml
     # They will be excluded from value updates used in the splitting criteria.
     return {"render": rendered_image,
             "viewspace_points": screenspace_points,
+            "viewspace_points_densify": screenspace_points_densify,
             "visibility_filter": radii > 0,
             "radii": radii,
             "depth": depth}

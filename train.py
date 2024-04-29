@@ -151,7 +151,8 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
 
             # Densification
             if iteration < opt.densify_until_iter:
-                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter, voxel_visible_mask,
+                viewspace_point_tensor_densify = render_pkg["viewspace_points_densify"] 
+                gaussians.add_densification_stats(viewspace_point_tensor_densify, visibility_filter, voxel_visible_mask,
                                                   use_filter)
 
                 if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
