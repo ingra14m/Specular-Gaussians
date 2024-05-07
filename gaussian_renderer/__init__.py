@@ -283,9 +283,11 @@ def anchor_render(viewpoint_camera, pc: AnchorGaussianModel, pipe, bg_color: tor
 
     # Create zero tensor. We will use it to make pytorch return gradients of the 2D (screen-space) means
     screenspace_points = torch.zeros_like(xyz, dtype=pc.get_anchor.dtype, requires_grad=True, device="cuda") + 0
+    screenspace_points_densify = torch.zeros_like(xyz, dtype=pc.get_anchor.dtype, requires_grad=True, device="cuda") + 0
     if retain_grad:
         try:
             screenspace_points.retain_grad()
+            screenspace_points_densify.retain_grad()
         except:
             pass
 
@@ -314,6 +316,7 @@ def anchor_render(viewpoint_camera, pc: AnchorGaussianModel, pipe, bg_color: tor
     rendered_image, radii, depth = rasterizer(
         means3D=xyz,
         means2D=screenspace_points,
+        means2D_densify=screenspace_points_densify,
         shs=None,
         colors_precomp=color,
         opacities=opacity,
@@ -325,6 +328,7 @@ def anchor_render(viewpoint_camera, pc: AnchorGaussianModel, pipe, bg_color: tor
     if is_training:
         return {"render": rendered_image,
                 "viewspace_points": screenspace_points,
+                "viewspace_points_densify": screenspace_points_densify,
                 "visibility_filter": radii > 0,
                 "radii": radii,
                 "selection_mask": mask,

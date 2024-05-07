@@ -491,11 +491,12 @@ class AnchorGaussianModel:
             candidate_mask = torch.logical_and(candidate_mask, offset_mask)
 
             # random pick
-            # rand_mask = torch.rand_like(candidate_mask.float()) > (0.5 ** (i + 1))
-            # rand_mask = rand_mask.cuda()
-            grad_quantile = torch.quantile(grads, 0.5 ** (i + 1))
-            grad_mask = grads > grad_quantile
-            candidate_mask = torch.logical_and(candidate_mask, grad_mask)
+            rand_mask = torch.rand_like(candidate_mask.float()) > (0.5 ** (i + 1))
+            rand_mask = rand_mask.cuda()
+            candidate_mask = torch.logical_and(candidate_mask, rand_mask)
+            #grad_quantile = torch.quantile(grads, 0.5 ** (i + 1))
+            #grad_mask = grads > grad_quantile
+            #candidate_mask = torch.logical_and(candidate_mask, grad_mask)
 
             length_inc = self.get_anchor.shape[0] * self.n_offsets - init_length
             if length_inc == 0:

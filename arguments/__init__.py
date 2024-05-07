@@ -173,7 +173,7 @@ class AnchorOptimizationParams(ParamGroup):
 
         self.min_opacity = 0.005
         self.success_threshold = 0.8
-        self.densify_grad_threshold = 0.0002
+        self.densify_grad_threshold = 0.0006
 
         # for coarse to fine
         self.use_c2f = False

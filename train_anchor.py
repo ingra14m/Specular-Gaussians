@@ -128,7 +128,8 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
             # densification
             if iteration < opt.update_until and iteration > opt.start_stat:
                 # add statis
-                gaussians.training_statis(viewspace_point_tensor, opacity, visibility_filter, offset_selection_mask,
+                viewspace_point_tensor_densify = render_pkg["viewspace_points_densify"]
+                gaussians.training_statis(viewspace_point_tensor_densify, opacity, visibility_filter, offset_selection_mask,
                                           voxel_visible_mask)
 
                 # densification
