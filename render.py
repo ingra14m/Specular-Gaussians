@@ -17,7 +17,8 @@ from os import makedirs
 from gaussian_renderer import render, prefilter_voxel
 import torchvision
 from utils.general_utils import safe_state
-from utils.pose_utils import pose_spherical
+from utils.pose_utils import pose_spherical, generate_ellipse_path
+from utils.graphics_utils import getWorld2View2
 from argparse import ArgumentParser
 from arguments import ModelParams, PipelineParams, OptimizationParams, get_combined_args
 from gaussian_renderer import GaussianModel
@@ -42,7 +43,6 @@ def render_set(model_path, load2gpt_on_the_fly, name, iteration, views, gaussian
     voxel_visible_mask = None
 
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
-
         if use_filter:
             voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background)
         dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
@@ -136,6 +136,32 @@ def interpolate_all(model_path, load2gpt_on_the_fly, name, iteration, views, gau
     imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=60, quality=8)
 
 
+def render_video(model_path, iteration, views, gaussians, pipeline, background, specular):
+    render_path = os.path.join(model_path, 'video', "ours_{}".format(iteration))
+    makedirs(render_path, exist_ok=True)
+    to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
+    view = views[0]
+    renderings = []
+    for idx, pose in enumerate(tqdm(generate_ellipse_path(views, n_frames=600), desc="Rendering progress")):
+        view.world_view_transform = torch.tensor(
+            getWorld2View2(pose[:3, :3].T, pose[:3, 3], view.trans, view.scale)).transpose(0, 1).cuda()
+        view.full_proj_transform = (
+            view.world_view_transform.unsqueeze(0).bmm(view.projection_matrix.unsqueeze(0))).squeeze(0)
+        view.camera_center = view.world_view_transform.inverse()[3, :3]
+        voxel_visible_mask = prefilter_voxel(view, gaussians, pipeline, background)
+        dir_pp = (gaussians.get_xyz - view.camera_center.repeat(gaussians.get_features.shape[0], 1))
+        dir_pp_normalized = dir_pp / dir_pp.norm(dim=1, keepdim=True)
+        normal = gaussians.get_normal_axis(dir_pp_normalized=dir_pp_normalized, return_delta=True)
+        mlp_color = specular.step(gaussians.get_asg_features[voxel_visible_mask],
+                                      dir_pp_normalized[voxel_visible_mask], normal[voxel_visible_mask])
+        rendering = render(view, gaussians, pipeline, background, mlp_color, voxel_visible_mask=voxel_visible_mask)["render"]
+        renderings.append(to8b(rendering.cpu().numpy()))
+        # torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
+
+    renderings = np.stack(renderings, 0).transpose(0, 2, 3, 1)
+    imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=60, quality=8)
+
+
 def render_sets(dataset: ModelParams, iteration: int, opt: OptimizationParams, pipeline: PipelineParams,
                 skip_train: bool, skip_test: bool, mode: str):
     with torch.no_grad():
@@ -151,6 +177,10 @@ def render_sets(dataset: ModelParams, iteration: int, opt: OptimizationParams, p
             render_func = render_set
         elif mode == "all":
             render_func = interpolate_all
+        elif mode == 'video':
+            render_video(dataset.model_path, scene.loaded_iter, scene.getTrainCameras(), gaussians, pipeline,
+                         background, specular)
+            return
 
         if not skip_train:
             render_func(dataset.model_path, dataset.load2gpu_on_the_fly, "train", scene.loaded_iter,
@@ -173,7 +203,7 @@ if __name__ == "__main__":
     parser.add_argument("--skip_train", action="store_true")
     parser.add_argument("--skip_test", action="store_true")
     parser.add_argument("--quiet", action="store_true")
-    parser.add_argument("--mode", default='render', choices=['render', 'view', 'all', 'pose', 'original'])
+    parser.add_argument("--mode", default='render', choices=['render', 'all', 'video'])
     args = get_combined_args(parser)
     print("Rendering " + args.model_path)
 
