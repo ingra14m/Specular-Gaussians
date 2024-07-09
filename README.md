@@ -123,6 +123,21 @@ python train_anchor.py -s data/tandt_db/db/drjohnson -m outputs/db/drjohnson --e
 
 ![real](assets/real.png)
 
+### Align with Rip-NeRF
+The Tri-MipRF and Rip-NeRF use both train and val set and the training data. I provided the results on NeRF-synthetic dataset with the same setting.
+| Scene     | PSNR   | SSIM      | LPIPS    |
+| --------- | ------ | --------- | -------- |
+| chair     | 37.33  | 0.9907    | 0.0088   |
+| drums     | 28.50  | 0.9669    | 0.0288   |
+| ficus     | 38.08  | 0.9922    | 0.0081   |
+| hotdog    | 39.86  | 0.9895    | 0.0148   |
+| lego      | 38.44  | 0.9876    | 0.0121   |
+| materials | 32.64  | 0.9738    | 0.0285   |
+| mic       | 38.57  | 0.995     | 0.0045   |
+| ship      | 33.66  | 0.9248    | 0.0906   |
+| Average   | **35.89** | **0.9776** | **0.0245** |
+| Rip-NeRF   | 35.44 | 0.973 | 0.037 |
+
 
 
 ## Acknowledgments
