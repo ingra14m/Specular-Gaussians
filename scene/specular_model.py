@@ -1,15 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.spec_utils import SpecularNetwork
+from utils.spec_utils import SpecularNetwork, SpecularNetworkReal
 import os
 from utils.system_utils import searchForMaxIteration
 from utils.general_utils import get_expon_lr_func, get_linear_noise_func
 
 
 class SpecularModel:
-    def __init__(self):
-        self.specular = SpecularNetwork().cuda()
+    def __init__(self, is_real=False, is_indoor=False):
+        self.specular = SpecularNetworkReal(is_indoor).cuda() if is_real else SpecularNetwork().cuda()
         self.optimizer = None
         self.spatial_lr_scale = 5
 

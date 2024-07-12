@@ -110,7 +110,7 @@ class SGEnvmap(torch.nn.Module):
 
 
 class ASGRender(torch.nn.Module):
-    def __init__(self, inChanel, viewpe=6, feape=6, featureC=128, num_theta=4, num_phi=8):
+    def __init__(self, viewpe=2, featureC=128, num_theta=4, num_phi=8):
         super(ASGRender, self).__init__()
 
         self.num_theta = num_theta
@@ -156,8 +156,8 @@ class ASGRender(torch.nn.Module):
 
 
 class ASGRenderReal(torch.nn.Module):
-    def __init__(self, inChanel, viewpe=6, feape=6, featureC=128, num_theta=4, num_phi=8, is_indoor=False):
-        super(ASGRender, self).__init__()
+    def __init__(self, viewpe=2, featureC=32, num_theta=2, num_phi=4, is_indoor=False):
+        super(ASGRenderReal, self).__init__()
 
         self.num_theta = num_theta
         self.num_phi = num_phi
@@ -173,6 +173,7 @@ class ASGRenderReal(torch.nn.Module):
             self.mlp = torch.nn.Sequential(layer1, torch.nn.ReLU(inplace=True), layer2, torch.nn.ReLU(inplace=True), layer3)
         else:
             self.mlp = torch.nn.Sequential(layer1, torch.nn.ReLU(inplace=True), layer3)
+
         torch.nn.init.constant_(self.mlp[-1].bias, 0)
 
     def forward(self, pts, viewdirs, features, normal):
@@ -200,11 +201,13 @@ class SpecularNetwork(nn.Module):
         self.asg_feature = 24
         self.num_theta = 4
         self.num_phi = 8
+        self.view_pe = 2
+        self.hidden_feature = 128
         self.asg_hidden = self.num_theta * self.num_phi * 4
 
         self.gaussian_feature = nn.Linear(self.asg_feature, self.asg_hidden)
 
-        self.render_module = ASGRender(self.asg_hidden, 2, 2, 128)
+        self.render_module = ASGRender(self.view_pe, self.hidden_feature, self.num_theta, self.num_phi)
 
     def forward(self, x, view, normal):
         feature = self.gaussian_feature(x)
@@ -214,17 +217,19 @@ class SpecularNetwork(nn.Module):
 
 
 class SpecularNetworkReal(nn.Module):
-    def __init__(self):
+    def __init__(self, is_indoor=False):
         super(SpecularNetworkReal, self).__init__()
 
         self.asg_feature = 12
         self.num_theta = 2
         self.num_phi = 4
+        self.view_pe = 2
+        self.hidden_feature = 32
         self.asg_hidden = self.num_theta * self.num_phi * 4
 
         self.gaussian_feature = nn.Linear(self.asg_feature, self.asg_hidden)
 
-        self.render_module = ASGRenderReal(self.asg_hidden, 2, 2, 32, self.num_theta, self.num_phi)
+        self.render_module = ASGRenderReal(self.view_pe, self.hidden_feature, self.num_theta, self.num_phi, is_indoor)
 
     def forward(self, x, view, normal):
         feature = self.gaussian_feature(x)

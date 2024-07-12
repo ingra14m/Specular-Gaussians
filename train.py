@@ -1,9 +1,9 @@
-7  #
+#
 # Copyright (C) 2023, Inria
 # GRAPHDECO research group, https://team.inria.fr/graphdeco
 # All rights reserved.
 #
-# This software is free for non-commercial, research and evaluation use 
+# This software is free for non-commercial, research and evaluation use
 # under the terms of the LICENSE.md file.
 #
 # For inquiries contact  george.drettakis@inria.fr
@@ -38,7 +38,7 @@ except ImportError:
 def training(dataset, opt, pipe, testing_iterations, saving_iterations):
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = GaussianModel(dataset.sh_degree, dataset.asg_degree)
-    specular_mlp = SpecularModel()
+    specular_mlp = SpecularModel(dataset.is_real, dataset.is_indoor)
     specular_mlp.train_setting(opt)
 
     scene = Scene(dataset, gaussians)
@@ -151,7 +151,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
 
             # Densification
             if iteration < opt.densify_until_iter:
-                viewspace_point_tensor_densify = render_pkg["viewspace_points_densify"] 
+                viewspace_point_tensor_densify = render_pkg["viewspace_points_densify"]
                 gaussians.add_densification_stats(viewspace_point_tensor_densify, visibility_filter, voxel_visible_mask,
                                                   use_filter)
 
