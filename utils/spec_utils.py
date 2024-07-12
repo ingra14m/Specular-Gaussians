@@ -141,7 +141,6 @@ class ASGRender(torch.nn.Module):
         reflect_dir = self.safe_normalize(self.reflect(-viewdirs, normal))
 
         color_feature = self.ree_function(reflect_dir, a, la, mu)
-        # color_feature = color_feature.view(color_feature.size(0), -1, 3)
         color_feature = color_feature.view(color_feature.size(0), -1)  # [N, 256]
 
         normal_dot_viewdir = ((-viewdirs) * normal).sum(dim=-1, keepdim=True)  # [N, 1]
@@ -152,8 +151,44 @@ class ASGRender(torch.nn.Module):
             indata += [positional_encoding(viewdirs, self.viewpe)]
         mlp_in = torch.cat(indata, dim=-1)
         rgb = self.mlp(mlp_in)
-        # rgb = torch.sum(color_feature, dim=1)
-        # rgb = torch.sigmoid(rgb)
+
+        return rgb
+
+
+class ASGRenderReal(torch.nn.Module):
+    def __init__(self, inChanel, viewpe=6, feape=6, featureC=128, num_theta=4, num_phi=8, is_indoor=False):
+        super(ASGRender, self).__init__()
+
+        self.num_theta = num_theta
+        self.num_phi = num_phi
+        self.in_mlpC = 2 * viewpe * 3 + 3 + self.num_theta * self.num_phi * 2
+        self.viewpe = viewpe
+        self.ree_function = RenderingEquationEncoding(self.num_theta, self.num_phi, 'cuda')
+
+        layer1 = torch.nn.Linear(self.in_mlpC, featureC)
+        layer2 = torch.nn.Linear(featureC, featureC)
+        layer3 = torch.nn.Linear(featureC, 3)
+
+        if is_indoor:
+            self.mlp = torch.nn.Sequential(layer1, torch.nn.ReLU(inplace=True), layer2, torch.nn.ReLU(inplace=True), layer3)
+        else:
+            self.mlp = torch.nn.Sequential(layer1, torch.nn.ReLU(inplace=True), layer3)
+        torch.nn.init.constant_(self.mlp[-1].bias, 0)
+
+    def forward(self, pts, viewdirs, features, normal):
+        asg_params = features.view(-1, self.num_theta, self.num_phi, 4)  # [N, 8, 16, 4]
+        a, la, mu = torch.split(asg_params, [2, 1, 1], dim=-1)
+
+        color_feature = self.ree_function(viewdirs, a, la, mu)
+        color_feature = color_feature.view(color_feature.size(0), -1)  # [N, 256]
+
+        indata = [color_feature]
+        if self.viewpe > -1:
+            indata += [viewdirs]
+        if self.viewpe > 0:
+            indata += [positional_encoding(viewdirs, self.viewpe)]
+        mlp_in = torch.cat(indata, dim=-1)
+        rgb = self.mlp(mlp_in)
 
         return rgb
 
@@ -170,6 +205,26 @@ class SpecularNetwork(nn.Module):
         self.gaussian_feature = nn.Linear(self.asg_feature, self.asg_hidden)
 
         self.render_module = ASGRender(self.asg_hidden, 2, 2, 128)
+
+    def forward(self, x, view, normal):
+        feature = self.gaussian_feature(x)
+        spec = self.render_module(x, view, feature, normal)
+
+        return spec
+
+
+class SpecularNetworkReal(nn.Module):
+    def __init__(self):
+        super(SpecularNetworkReal, self).__init__()
+
+        self.asg_feature = 12
+        self.num_theta = 2
+        self.num_phi = 4
+        self.asg_hidden = self.num_theta * self.num_phi * 4
+
+        self.gaussian_feature = nn.Linear(self.asg_feature, self.asg_hidden)
+
+        self.render_module = ASGRenderReal(self.asg_hidden, 2, 2, 32, self.num_theta, self.num_phi)
 
     def forward(self, x, view, normal):
         feature = self.gaussian_feature(x)
