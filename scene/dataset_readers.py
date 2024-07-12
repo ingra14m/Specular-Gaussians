@@ -261,7 +261,7 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
     return cam_infos
 
 
-def readNerfSyntheticInfo(path, white_background, eval, extension=".png", read_val=False):
+def readNerfSyntheticInfo(path, white_background, eval, read_val=False, extension=".png"):
     try:
         print("Reading Training Transforms")
         train_cam_infos = readCamerasFromTransforms(path, "transforms_train.json", white_background, extension)
@@ -272,7 +272,7 @@ def readNerfSyntheticInfo(path, white_background, eval, extension=".png", read_v
             train_cam_infos.extend(test_cam_infos)
             test_cam_infos = []
 
-        if read_val or True:
+        if read_val:
             print("Reading Val Transforms")
             val_cam_infos = readCamerasFromTransforms(path, "transforms_val.json", white_background, extension)
             train_cam_infos.extend(val_cam_infos)
