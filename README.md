@@ -85,8 +85,11 @@ python train.py -s your/path/to/the/dataset -m your/path/to/save --eval
 ## For synthetic bounded scenes
 python train.py -s data/nerf_synthetic/drums -m outputs/nerf/drums --eval
 
-## For real-world unbounded scenes
-python train.py -s data/mipnerf-360/bonsai -m outputs/mip360/bonsai --eval --use_filter
+## For real-world unbounded indoor scenes
+python train.py -s data/mipnerf-360/bonsai -m outputs/mip360/bonsai --eval -r 2 --is_real --is_indoor --asg_degree 12
+
+## For real-world unbounded outdoor scenes
+python train.py -s data/mipnerf-360/bicycle -m outputs/mip360/bicycle --eval -r 4 --is_real --asg_degree 12
 ```
 
 
@@ -100,13 +103,7 @@ python train_anchor.py -s your/path/to/the/dataset -m your/path/to/save --eval
 python train_anchor.py -s data/nerf_synthetic/drums -m outputs/nerf/drums --eval --voxel_size 0.001 --update_init_factor 4 --iterations 30_000
 
 ## For mip360 scenes
-python train_anchor.py -s data/mipnerf-360/bonsai -m outputs/mip360/bonsai --eval --voxel_size 0.001 --update_init_factor 16 --iterations 30_000
-
-## For tandt scenes
-python train_anchor.py -s data/tandt_db/tandt/train -m outputs/tandt/train --eval --voxel_size 0.01 --update_init_factor 16 --iterations 30_000
-
-## For deep blending scenes
-python train_anchor.py -s data/tandt_db/db/drjohnson -m outputs/db/drjohnson --eval --voxel_size 0.005 --update_init_factor 16 --iterations 30_000 --use_c2f
+python train_anchor.py -s data/mipnerf-360/bonsai -m outputs/mip360/bonsai --eval --voxel_size 0.001 --update_init_factor 16 --iterations 30_000 -r [2|4]
 ```
 
 
