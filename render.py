@@ -172,6 +172,7 @@ def render_sets(dataset: ModelParams, iteration: int, opt: OptimizationParams, p
 
         bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
         background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
+        use_filter = dataset.is_real
 
         if mode == "render":
             render_func = render_set
@@ -185,12 +186,12 @@ def render_sets(dataset: ModelParams, iteration: int, opt: OptimizationParams, p
         if not skip_train:
             render_func(dataset.model_path, dataset.load2gpu_on_the_fly, "train", scene.loaded_iter,
                         scene.getTrainCameras(), gaussians, pipeline,
-                        background, specular, opt.use_filter)
+                        background, specular, use_filter)
 
         if not skip_test:
             render_func(dataset.model_path, dataset.load2gpu_on_the_fly, "test", scene.loaded_iter,
                         scene.getTestCameras(), gaussians, pipeline,
-                        background, specular, opt.use_filter)
+                        background, specular, use_filter)
 
 
 if __name__ == "__main__":

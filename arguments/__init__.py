@@ -98,7 +98,6 @@ class OptimizationParams(ParamGroup):
         self.densify_from_iter = 500
         self.densify_until_iter = 15_000
         self.densify_grad_threshold = 0.0005
-        self.use_filter = False
         super().__init__(parser, "Optimization Parameters")
 
 

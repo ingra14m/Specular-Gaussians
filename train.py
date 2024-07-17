@@ -56,7 +56,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations):
     best_iteration = 0
     last_ssim = 0
     last_lpips = 0
-    use_filter = opt.use_filter
+    use_filter = dataset.is_real
     progress_bar = tqdm(range(opt.iterations), desc="Training progress")
     voxel_visible_mask = None
     for iteration in range(1, opt.iterations + 1):
