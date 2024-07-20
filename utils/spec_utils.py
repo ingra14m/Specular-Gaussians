@@ -251,7 +251,7 @@ class AnchorSpecularNetwork(nn.Module):
         self.gaussian_diffuse = nn.Linear(self.asg_feature, 3)
         self.gaussian_normal = nn.Linear(self.asg_feature + 3, 3)
 
-        self.render_module = ASGRender(self.asg_hidden, 2, 2, 64, num_theta=2, num_phi=4)
+        self.render_module = ASGRender(2, 64, num_theta=2, num_phi=4)
 
     def forward(self, x, view, normal_center, offset):
         feature = self.gaussian_feature(torch.cat([x, view], dim=-1))
