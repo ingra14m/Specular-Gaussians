@@ -130,7 +130,18 @@ python train_anchor.py -s data/mipnerf-360/bonsai -m outputs/mip360/bonsai --eva
 
 ![real](assets/real.png)
 
+
+
+### Ablation
+
+![ablation-asg](assets/ablation-asg.png)
+
+![ablation-c2f](assets/ablation-c2f.png)
+
+
+
 ### Align with Rip-NeRF
+
 The Tri-MipRF and Rip-NeRF use both train and val set and the training data. I provided the results on NeRF-synthetic dataset with the same setting.
 | Scene     | PSNR   | SSIM      | LPIPS    |
 | --------- | ------ | --------- | -------- |
