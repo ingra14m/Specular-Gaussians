@@ -104,7 +104,7 @@ python train.py -s data/mipnerf-360/bicycle -m outputs/mip360/bicycle --eval -r 
 
 
 
-**Train with anchor**
+**[Extra, for acceleration] Train with anchor**
 
 ```shell
 python train_anchor.py -s your/path/to/the/dataset -m your/path/to/save --eval
