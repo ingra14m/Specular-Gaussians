@@ -4,9 +4,11 @@
 
 ![teaser](assets/teaser.png)
 
-This project was built on my previous released [My-exp-Gaussian](https://github.com/ingra14m/My-exp-Gaussian), aiming to enhance 3D Gaussian Splatting in modeling scenes with specular highlights. But I hope this work can assist researchers who need to model specular highlights through splatting.
+This project was built on my previous released [My-exp-Gaussian](https://github.com/ingra14m/My-exp-Gaussian), aiming to enhance 3D Gaussian Splatting in modeling scenes with specular highlights. I hope this work can assist researchers who need to model specular highlights through splatting.
 
 
+
+**Note** that the current Spec-Gaussian has significantly improved in quality compared to the first version on arxiv (2024.02). Please pay attention to the latest version on arxiv.
 
 ## News
 
