@@ -1,17 +1,25 @@
 # Spec-Gaussian: Anisotropic View-Dependent Appearance for 3D Gaussian Splatting
 
-## [Project page](https://ingra14m.github.io/Spec-Gaussian-website/) | [Paper](https://arxiv.org/abs/2402.15870)
+## [Project Page](https://ingra14m.github.io/Spec-Gaussian-website/) | [Paper](https://arxiv.org/abs/2402.15870) | [Anisotropic Dataset](https://drive.google.com/drive/folders/1hH7qMSbTyR392PYgsqeMhAnaAxwxzemc?usp=drive_link)
 
 ![teaser](assets/teaser.png)
 
-This project was built on my previous released [My-exp-Gaussian](https://github.com/ingra14m/My-exp-Gaussian), aiming to enhance 3D Gaussian Splatting in modeling scenes with specular highlights. This work was rejected due to minor improvements and a decrease in rendering speed. But I still hope this work can assist researchers who need to model specular highlights through splatting.
+This project was built on my previous released [My-exp-Gaussian](https://github.com/ingra14m/My-exp-Gaussian), aiming to enhance 3D Gaussian Splatting in modeling scenes with specular highlights. But I hope this work can assist researchers who need to model specular highlights through splatting.
+
+
+
+## News
+
+- **[9/26/2024]** Spec-Gaussian has been accepted by NeurIPS 2024. We also release our anisotropic dataset [here](https://drive.google.com/drive/folders/1hH7qMSbTyR392PYgsqeMhAnaAxwxzemc?usp=drive_link).
+
+
 
 ## Dataset
 
 In our paper, we use:
 
-- synthetic dataset from [NeRF](https://drive.google.com/drive/folders/128yBriW1IG_3NJ5Rp7APSTZsJqdJdfc1), [NSVF](https://dl.fbaipublicfiles.com/nsvf/dataset/Synthetic_NSVF.zip), and our [Anisotropic Synthetic Dataset]()
-- real-world dataset from [Mip-NeRF 360](https://jonbarron.info/mipnerf360/) and [tandt_db](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/datasets/input/tandt_db.zip).
+- synthetic dataset from [NeRF](https://drive.google.com/drive/folders/128yBriW1IG_3NJ5Rp7APSTZsJqdJdfc1), [NSVF](https://dl.fbaipublicfiles.com/nsvf/dataset/Synthetic_NSVF.zip), and our [Anisotropic Synthetic Dataset](https://drive.google.com/drive/folders/1hH7qMSbTyR392PYgsqeMhAnaAxwxzemc?usp=drive_link)
+- real-world dataset from [Mip-NeRF 360](https://jonbarron.info/mipnerf360/).
 
 And the data structure should be organized as follows:
 
