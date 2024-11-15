@@ -12,6 +12,7 @@ This project was built on my previous released [My-exp-Gaussian](https://github.
 
 ## News
 
+- **[11/15/2024]** Update the training scripts for current version.
 - **[9/26/2024]** Spec-Gaussian has been accepted by NeurIPS 2024. We also release our anisotropic dataset [here](https://drive.google.com/drive/folders/1hH7qMSbTyR392PYgsqeMhAnaAxwxzemc?usp=drive_link).
 
 
@@ -83,9 +84,9 @@ pip install -r requirements.txt
 
 ### Train
 
-We have provided scripts [`run_anchor.sh`](https://github.com/ingra14m/Spec-Gaussian/blob/main/run_anchor.sh) and [`run_wo_anchor.sh`](https://github.com/ingra14m/Spec-Gaussian/blob/main/run_wo_anchor.sh) that were used to generate the table in the paper. 
+We have provided scripts [`run_wo_anchor.sh`](https://github.com/ingra14m/Spec-Gaussian/blob/main/run_wo_anchor.sh) and [`run_anchor.sh`](https://github.com/ingra14m/Spec-Gaussian/blob/main/run_anchor.sh) that were used to generate the table in the paper.
 
-In general, using the version without anchor Gaussian can achieve better rendering effects for synthesized bounded scenes. For real-world unbounded scenes, using the version with anchor Gaussian can achieve better results. For researchers who want to explore the use of with anchor Gaussian in bounded scenes and without anchor Gaussian in unbounded scenes, we have provided the following general training command.
+In general, using the version without anchor Gaussian can achieve better rendering effects. Using the version with anchor Gaussian can achieve faster training and inference. For researchers who want to explore the use of Spec-Gaussian, we have provided the following general training command.
 
 **Train without anchor**
 
